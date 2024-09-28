@@ -20,7 +20,7 @@ use crate::{
     composite::CompositePipeline,
     config::ConfigBuffer,
     light::{LightBuffers, LightPipeline},
-    merge::{MergePipeline, MergeTargets},
+    merge::{MergePipeline, MergeUniforms},
     probe::ProbePipeline,
     sdf::{SdfBuffers, SdfPipeline},
     size::ComputedSizeBuffer,
@@ -62,6 +62,7 @@ impl render_graph::ViewNode for LightNode {
         let bounce_pipeline = world.resource::<BouncePipeline>();
         let probe_pipeline = world.resource::<ProbePipeline>();
         let merge_pipeline = world.resource::<MergePipeline>();
+        let merge_unifrom = world.resource::<MergeUniforms>();
 
         let Some(render_targets) = world.get_resource::<RenderTargets>() else {
             warn!("no targets");
@@ -104,6 +105,7 @@ impl render_graph::ViewNode for LightNode {
             // Some(light_binding),
             Some(size_binding),
             Some(config_binding),
+            Some(merge_uniform_binding),
         ) = (
             world.resource::<ViewUniforms>().uniforms.binding(),
             sdf_buffers.circle_buffer.binding(),
@@ -111,6 +113,7 @@ impl render_graph::ViewNode for LightNode {
             // light_buffers.point_light_buffer.binding(),
             size_buffer.binding(),
             config_buffer.binding(),
+            merge_unifrom.buffer.binding(),
         )
         else {
             warn!("binding missing");
@@ -196,14 +199,9 @@ impl render_graph::ViewNode for LightNode {
 
         // ---------------------------------------------------------------
         // merge probes
-        //
-        // info!("---------------------------------------");
+        // small to high resolution ...
         for i in 0..merge_targets.len() {
-            let last_index = (merge_targets.len() - i) % merge_targets.len();
-            let render_index = merge_targets.len() - 1 - i;
-
-            // info!("last {last_index}, this {render_index}");
-
+            let last_index = i.checked_sub(1).unwrap_or(merge_targets.len() - 1);
             let merge_bind_group = render_context.render_device().create_bind_group(
                 Some("merge_bind_group".into()),
                 &merge_pipeline.layout,
@@ -214,13 +212,14 @@ impl render_graph::ViewNode for LightNode {
                     &merge_targets[last_index].sampler,
                     size_binding.clone(),
                     config_binding.clone(),
+                    merge_uniform_binding.clone(),
                 )),
             );
 
             let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
                 label: Some("merge_pass".into()),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &merge_targets[render_index].texture_view,
+                    view: &merge_targets[i].texture_view,
                     resolve_target: None,
                     ops: Operations::default(),
                 })],
@@ -229,8 +228,10 @@ impl render_graph::ViewNode for LightNode {
                 occlusion_query_set: None,
             });
 
+            let offset = merge_unifrom.offsets[i];
+
             render_pass.set_render_pipeline(merge_render_pipeline);
-            render_pass.set_bind_group(0, &merge_bind_group, &[]);
+            render_pass.set_bind_group(0, &merge_bind_group, &[offset]);
             render_pass.draw(0..3, 0..1);
         }
 
@@ -319,8 +320,8 @@ impl render_graph::ViewNode for LightNode {
                 &bounce_target.sampler,
                 &probe_target.texture_view,
                 &probe_target.sampler,
-                &merge_targets[0].texture_view,
-                &merge_targets[0].sampler,
+                &merge_targets.first().unwrap().texture_view,
+                &merge_targets.first().unwrap().sampler,
                 config_binding,
                 size_binding,
             )),

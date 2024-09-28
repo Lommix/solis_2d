@@ -42,7 +42,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		probe_uv_center,
 		vec2(cos(ray_dir), sin(ray_dir)),
 		cascade_index * ( probe_stride + 1 ),
-		ray_length * cfg.probe_size * 100.,
+		cfg.probe_size * 100. * probe_stride,
 		sdf_tex,
 		sdf_sampler,
 		20,
@@ -50,5 +50,9 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	);
 
 	out = select(out, result.last_sample, result.success == 1);
+
+	// debug only, channel is empty
+	out.a = 1.;
+
 	return out;
 }

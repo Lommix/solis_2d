@@ -1,3 +1,9 @@
+use crate::{
+    config::GpuConfig,
+    constant::MERGE_FORMAT,
+    prelude::{ComputedSize, GiConfig},
+    targets::RenderTargets,
+};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
@@ -5,22 +11,16 @@ use bevy::{
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, FragmentState, MultisampleState, PipelineCache, PrimitiveState,
-            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, ShaderType,
+            ColorWrites, DynamicUniformBuffer, FragmentState, MultisampleState, PipelineCache,
+            PrimitiveState, RenderPipelineDescriptor, SamplerBindingType, ShaderStages, ShaderType,
             TextureSampleType,
         },
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         texture::GpuImage,
-        view::ViewUniform,
     },
 };
 
-use crate::{
-    config::GpuConfig,
-    constant::{LIGHT_FORMAT, MERGE_FORMAT},
-    prelude::ComputedSize,
-};
-
+/// folding the cascades back into one
 #[derive(Resource)]
 pub struct MergePipeline {
     pub layout: BindGroupLayout,
@@ -43,6 +43,7 @@ impl FromWorld for MergePipeline {
                     sampler(SamplerBindingType::NonFiltering),
                     uniform_buffer::<ComputedSize>(false),
                     uniform_buffer::<GpuConfig>(false),
+                    uniform_buffer::<MergeUniform>(true),
                 ),
             ),
         );
@@ -77,40 +78,64 @@ impl FromWorld for MergePipeline {
     }
 }
 
+#[derive(ShaderType)]
+pub struct MergeUniform {
+    pub iteration: u32,
+    pub target_size: Vec2,
+}
+
+#[derive(Resource, Default)]
+pub struct MergeUniforms {
+    pub buffer: DynamicUniformBuffer<MergeUniform>,
+    pub offsets: Vec<u32>,
+}
+
+//todo: should be loaded once + on change
+// impl FromWorld for MergeUniforms {
+//     fn from_world(world: &mut World) -> Self {
+//         let mut buffer = DynamicUniformBuffer::<MergeUniform>::default();
+//         let mut offsets = Vec::new();
+//
+//         let render_device = world.resource::<RenderDevice>();
+//         let render_queue = world.resource::<RenderQueue>();
+//         let gi_config = world.resource::<GiConfig>();
+//
+//         if let Some(mut writer) = buffer.get_writer(4, &render_device, &render_queue) {
+//             for i in 0..gi_config.cascade_count {
+//                 offsets.push(writer.write(&MergeUniform {
+//                     iteration: i,
+//                     target_size: Vec2::ZERO,
+//                 }));
+//             }
+//         }
+//
+//         MergeUniforms { buffer, offsets }
+//     }
+// }
+
+pub(crate) fn prepare_uniform(
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    mut uniforms: ResMut<MergeUniforms>,
+    targets: Res<RenderTargets>,
+) {
+    let mut offsets = Vec::new();
+    if let Some(mut writer) = uniforms.buffer.get_writer(4, &render_device, &render_queue) {
+        targets
+            .merge_targets
+            .iter()
+            .enumerate()
+            .for_each(|(i, target)| {
+                offsets.push(writer.write(&MergeUniform {
+                    iteration: i as u32,
+                    target_size: target.size,
+                }));
+            });
+    }
+    uniforms.offsets = offsets;
+}
+
 #[derive(Default, ShaderType)]
 pub struct MergeConfig {
     index: u32,
-}
-
-pub struct MergeTargets<'a> {
-    swap: bool,
-    source: &'a GpuImage,
-    dest: &'a GpuImage,
-}
-
-impl<'a> From<(&'a GpuImage, &'a GpuImage)> for MergeTargets<'a> {
-    fn from(value: (&'a GpuImage, &'a GpuImage)) -> Self {
-        Self {
-            swap: false,
-            source: value.0,
-            dest: value.1,
-        }
-    }
-}
-
-impl<'a> MergeTargets<'a> {
-    pub fn destination(&self, index: u32) -> &GpuImage {
-        if index % 2 == 0 {
-            self.source
-        } else {
-            self.dest
-        }
-    }
-    pub fn source(&self, index: u32) -> &GpuImage {
-        if index % 2 == 0 {
-            self.dest
-        } else {
-            self.source
-        }
-    }
 }

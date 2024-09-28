@@ -11,7 +11,6 @@ use bevy::{
         render_resource::Source,
         Render, RenderApp, RenderSet,
     },
-    time::common_conditions::on_timer,
     window::WindowResized,
 };
 use size::ComputedSizeBuffer;
@@ -35,6 +34,7 @@ pub mod prelude {
     pub use super::light::PointLight2d;
     pub use super::sdf::{Emitter, Occluder, SdfShape};
     pub use super::size::ComputedSize;
+    pub use super::targets::RenderTargets;
     pub use super::LightPlugin;
 }
 
@@ -61,7 +61,8 @@ impl Plugin for LightPlugin {
         );
 
         // adds some hot reloading for dev
-        app.add_systems(Last, watch.run_if(on_timer(Duration::from_millis(20))));
+        #[cfg(target_feature = "dev")]
+        app.add_systems(Last, watch.run_if(on_timer(Duration::from_millis(50))));
 
         // ---------------
         // fix later
@@ -114,7 +115,8 @@ impl Plugin for LightPlugin {
                     sdf::prepare_sdf_buffers,
                     size::prepare_bindgroup,
                     light::prepare_light_buffers,
-                    config::prepare,
+                    config::prepare,        // todo: run on change
+                    merge::prepare_uniform, // todo:run on change
                 )
                     .in_set(RenderSet::Prepare),
             )
@@ -137,12 +139,13 @@ impl Plugin for LightPlugin {
             .init_resource::<composite::CompositePipeline>()
             .init_resource::<config::ConfigBuffer>()
             .init_resource::<probe::ProbePipeline>()
-            .init_resource::<merge::MergePipeline>();
+            .init_resource::<merge::MergePipeline>()
+            .init_resource::<merge::MergeUniforms>();
     }
 }
 
 // this is a temp fix for hot reloading while development, since
-// embedded assets do not work with bevy's import logic
+// embedded assets do not work with bevy's wgsl imports.
 fn watch(mut shaders: ResMut<Assets<Shader>>) {
     let currrent_file = PathBuf::from(file!());
     let current_dir = currrent_file.parent().unwrap();

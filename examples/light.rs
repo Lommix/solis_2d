@@ -10,18 +10,27 @@ use lommix_light::prelude::*;
 pub fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(ImagePlugin {
-                default_sampler: ImageSamplerDescriptor::nearest(),
-                ..default()
-            }),
-            EguiPlugin,
+            DefaultPlugins
+                .set(ImagePlugin {
+                    default_sampler: ImageSamplerDescriptor::nearest(),
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "fragment radiant cascade".into(),
+                        ..default()
+                    }),
+                    ..default()
+                }),
+            bevy_egui::EguiPlugin,
             LightPlugin::default(),
             FrameTimeDiagnosticsPlugin,
         ))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup,))
         .add_systems(
             Update,
             (
+                debug_targets,
                 update,
                 scroll,
                 move_camera,
@@ -60,7 +69,7 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
             cmd.spawn((
                 SpriteBundle {
                     texture: server.load("box.png"),
-                    transform: Transform::from_xyz((x as f32) * 200., (y as f32) * 200., 1.),
+                    transform: Transform::from_xyz((x as f32) * 400., (y as f32) * 400., 1.),
                     ..default()
                 },
                 Emitter {
@@ -98,6 +107,74 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
     ));
 }
 
+fn debug_targets(
+    mut cmd: Commands,
+    render_targets: Res<RenderTargets>,
+    mut delay: Local<f32>,
+    time: Res<Time>,
+) {
+    *delay += time.delta_seconds();
+
+    if *delay < 5. || *delay > 100. {
+        return;
+    }
+
+    cmd.spawn(NodeBundle {
+        border_color: BorderColor(Color::BLACK),
+        background_color: BackgroundColor(Color::WHITE),
+        style: Style {
+            border: UiRect::all(Val::Px(5.)),
+            padding: UiRect::all(Val::Px(2.)),
+            ..default()
+        },
+        ..default()
+    })
+    .with_children(|cmd| {
+        cmd.spawn(ImageBundle {
+            image: UiImage {
+                texture: render_targets.sdf_target.clone(),
+                ..default()
+            },
+            style: Style {
+                width: Val::Px(200.),
+                height: Val::Px(200.),
+                ..default()
+            },
+            ..default()
+        });
+
+        for tar in render_targets.merge_targets.iter() {
+            cmd.spawn(ImageBundle {
+                image: UiImage {
+                    texture: tar.img.clone(),
+                    ..default()
+                },
+                style: Style {
+                    width: Val::Px(200.),
+                    height: Val::Px(200.),
+                    ..default()
+                },
+                ..default()
+            });
+        }
+
+        cmd.spawn(ImageBundle {
+            image: UiImage {
+                texture: render_targets.probe_target.clone(),
+                ..default()
+            },
+            style: Style {
+                width: Val::Px(400.),
+                height: Val::Px(100.),
+                ..default()
+            },
+            ..default()
+        });
+    });
+
+    *delay = 500.;
+}
+
 fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
     egui::Window::new("Gi Config").show(egui.ctx_mut(), |ui| {
         ui.label("Sample Count");
@@ -113,6 +190,8 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
         flag_checkbox(GiFlags::DEBUG_BOUNCE, ui, &mut gi_config, "BOUNCE");
         flag_checkbox(GiFlags::DEBUG_PROBE, ui, &mut gi_config, "PROBE");
         flag_checkbox(GiFlags::DEBUG_MERGE, ui, &mut gi_config, "MERGE");
+        // ui.image("file://assets/box.png");
+        // ui.separator();
     });
 }
 
@@ -137,6 +216,7 @@ fn spawn_light(
     mut light: Query<(&mut Emitter, &Transform), With<FollowMouse>>,
     inputs: Res<ButtonInput<MouseButton>>,
     mut egui: EguiContexts,
+    server: Res<AssetServer>,
 ) {
     let Ok((mut emitter, transform)) = light.get_single_mut() else {
         return;
@@ -148,28 +228,21 @@ fn spawn_light(
 
     if inputs.just_pressed(MouseButton::Left) {
         cmd.spawn((
-            SpatialBundle::from_transform(transform.clone()),
             emitter.clone(),
+            SpriteBundle {
+                texture: server.load("lamp.png"),
+                transform: transform.clone(),
+                ..default()
+            },
         ));
 
-        let color = Color::rgb(
+        let color = Color::srgb(
             rand::random::<f32>(),
             rand::random::<f32>(),
             rand::random::<f32>(),
         );
 
         emitter.color = color;
-    }
-
-    if inputs.just_pressed(MouseButton::Right) {
-        cmd.spawn((
-            SpatialBundle::from_transform(transform.clone()),
-            Emitter {
-                intensity: 0.,
-                color: Color::BLACK,
-                shape: emitter.shape.clone(),
-            },
-        ));
     }
 }
 

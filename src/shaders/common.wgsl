@@ -20,7 +20,6 @@ struct ComputedSize{
 }
 
 fn debug_voronoi(cfg: GiConfig) -> f32{
-
 	return select(0.,1., (( cfg.flags & 0x1 )!= 0));
 }
 
@@ -44,9 +43,11 @@ fn debug_merge(cfg: GiConfig) -> f32{
 	return select(0.,1., ( cfg.flags & 0x20 )!= 0);
 }
 
+fn debug_final(cfg: GiConfig) -> f32 {
+	return select(0.,1., (( cfg.flags >> 5 ) & 0x1 )!= 0);
+}
 
-fn random(st : vec2<f32>) -> f32
-{
+fn random(st : vec2<f32>) -> f32 {
    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
 }
 

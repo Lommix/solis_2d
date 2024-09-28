@@ -60,11 +60,11 @@ bitflags::bitflags! {
     #[repr(transparent)]
     pub struct GiFlags: u32 {
         const DEFAULT       = 0;
-        const DEBUG_VORONOI = 0x1;
-        const DEBUG_SDF     = 0x2;
-        const DEBUG_LIGHT   = 0x4;
-        const DEBUG_BOUNCE  = 0x8;
-        const DEBUG_PROBE   = 0x10;
-        const DEBUG_MERGE   = 0x20;
+        const DEBUG_VORONOI = 0x1 << 0;
+        const DEBUG_SDF     = 0x1 << 1;
+        const DEBUG_LIGHT   = 0x1 << 2;
+        const DEBUG_BOUNCE  = 0x1 << 3;
+        const DEBUG_PROBE   = 0x1 << 4;
+        const DEBUG_MERGE   = 0x1 << 5;
     }
 }

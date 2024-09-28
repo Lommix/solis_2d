@@ -16,4 +16,10 @@ bytemuck = "1.15.0"
 rand = "0.8.5"
 
 [dev-dependencies]
+bevy-inspector-egui = "0.26.0"
 bevy_egui = "0.28"
+egui_extras = { version = "0.29.0", features = ["all_loaders", "image"] }
+image = "0.25.2"
+
+[features]
+dev = []

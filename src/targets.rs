@@ -1,4 +1,4 @@
-use crate::{constant, prelude::ComputedSize};
+use crate::{constant, merge::MergeUniform, prelude::ComputedSize};
 use bevy::{
     prelude::*,
     render::{
@@ -15,7 +15,7 @@ use bevy::{
 pub struct RenderTargets {
     pub sdf_target: Handle<Image>,
     pub probe_target: Handle<Image>,
-    pub merge_targets: Vec<Handle<Image>>,
+    pub merge_targets: Vec<MergeTarget>,
     pub light_target: Handle<Image>,
     pub bounce_target: Handle<Image>,
 }
@@ -66,13 +66,17 @@ impl RenderTargets {
 
 
         let mut merge_targets = Vec::new();
-        for i in 0..( size.cascade_count - 1 ){
+
+        info!("--------------------------");
+        for i in 0 .. ( size.cascade_count - 1 ) {
+            // in reverse order small to large
+            // following the cascade order
+            let index = size.cascade_count - 1 - i;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            let probe_stride = (2_i32).pow(i) as f32;
+            let probe_stride = (2_i32).pow(index) as f32;
+            let merge_size = size.scaled/probe_stride + Vec2::splat(probe_stride) - (size.scaled%probe_stride) ;
 
-            let merge_size = size.scaled/probe_stride
-            + Vec2::splat(probe_stride) - (size.scaled%probe_stride) ;
-
+            info!("-- size {merge_size}");
             images.insert(
                 &handle,
                 create_image(
@@ -81,10 +85,11 @@ impl RenderTargets {
                     ImageSampler::nearest(),
                 ),
             );
-            merge_targets.push(handle);
+            merge_targets.push(MergeTarget {
+                size: merge_size,
+                img: handle
+            })
         }
-
-        info!("creating targets");
 
         Self {
             sdf_target,
@@ -99,15 +104,16 @@ impl RenderTargets {
         &'a self,
         images: &'a RenderAssets<GpuImage>,
     ) -> impl Iterator<Item = &'a GpuImage> {
-        // joke, they are already sorted =)
+        // joke, they are already sorted
         self.merge_targets
             .iter()
-            .map(|handle| images.get(handle).unwrap())
+            .map(|target| images.get(&target.img).unwrap())
     }
 }
-
-fn grid_align(size: IVec2, grid_stride: i32) -> Vec2 {
-    return Vec2::ZERO;
+#[derive(Clone)]
+pub struct MergeTarget {
+    pub img: Handle<Image>,
+    pub size: Vec2,
 }
 
 fn create_image(size: Vec2, format: TextureFormat, sampler: ImageSampler) -> Image {

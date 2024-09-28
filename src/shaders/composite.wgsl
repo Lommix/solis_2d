@@ -38,6 +38,8 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let probe_1 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 1.);
 	let probe_2 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 2.);
 	let probe_3 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 3.);
+
+	// super simple ultra fast merge
 	let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
 
 	// debug view
@@ -45,7 +47,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	out = mix(out, vec4(sdf_sample.rgb, 1.), debug_voronoi(cfg));
 	out = mix(out, vec4(light_sample), debug_light(cfg));
 	out = mix(out, vec4(bounce_sample), debug_bounce(cfg));
-	out = mix(out, probe_2, debug_probe(cfg));
+	out = mix(out, probe_0, debug_probe(cfg));
 	out = mix(out, merge_sample, debug_merge(cfg));
 	// ----------
 

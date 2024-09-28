@@ -15,7 +15,7 @@ pub struct ComputedSize {
     pub native: Vec2,
     pub scaled: Vec2,
     pub probe: Vec2,
-    pub factor: f32,
+    pub down_scale_factor: f32,
     pub cascade_count: u32,
 }
 
@@ -38,7 +38,7 @@ impl ComputedSize {
             native: size,
             scaled: downscaled_size,
             probe: probe_size,
-            factor: constant::SDF_DOWNSCALE_FACTOR,
+            down_scale_factor: constant::SDF_DOWNSCALE_FACTOR,
             cascade_count,
         }
     }
@@ -48,7 +48,7 @@ pub fn extract_size(mut buffer: ResMut<ComputedSizeBuffer>, size: Extract<Res<Co
     let buffer = buffer.get_mut();
     buffer.native = size.native;
     buffer.scaled = size.scaled;
-    buffer.factor = size.factor;
+    buffer.down_scale_factor = size.down_scale_factor;
     buffer.probe = size.probe;
     buffer.cascade_count = size.cascade_count;
 }
