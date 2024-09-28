@@ -71,10 +71,10 @@ impl RenderTargets {
         for i in 0 .. ( size.cascade_count - 1 ) {
             // in reverse order small to large
             // following the cascade order
-            let index = size.cascade_count - 1 - i;
+            let index = size.cascade_count - 2 - i;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
             let probe_stride = (2_i32).pow(index) as f32;
-            let merge_size = size.scaled/probe_stride + Vec2::splat(probe_stride) - (size.scaled%probe_stride) ;
+            let merge_size = size.scaled/probe_stride ;//+ Vec2::splat(probe_stride) - (size.scaled%probe_stride) ;
 
             info!("-- size {merge_size}");
             images.insert(
