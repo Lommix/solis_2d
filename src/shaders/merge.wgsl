@@ -12,7 +12,7 @@
 @group(0) @binding(2) var last_merge_tex: texture_2d<f32>;
 @group(0) @binding(3) var last_merge_sampler: sampler;
 
-@group(0) @binding(4) var<uniform> computed_size: ComputedSize;
+@group(0) @binding(4) var<uniform> size: ComputedSize;
 @group(0) @binding(5) var<uniform> cfg: GiConfig;
 @group(0) @binding(6) var<uniform> merge_cfg: MergeConfig;
 
@@ -44,19 +44,18 @@ struct MergeConfig {
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
+	// first is 16x16
+	let probe_stride = f32(cfg.probe_stride) * pow(2., f32(4 - merge_cfg.iteration));
+
 	// swap 0 1 to make it counter clockwise
 	var positions = array<i32,4>(1,0,2,3);
-
 	let frag_pos = floor(merge_cfg.target_size * in.uv);
 
 	let cascade_probe_pos = floor(frag_pos/2);
-	let corner_pos = frag_pos%2.;
+	let corner_pos = frag_pos%2;
 
 	// counter clockwise index
 	let corner_index = positions[i32(corner_pos.x) + i32(corner_pos.y * 2)];
-
-	// first is 16x16
-	let probe_stride = f32( cfg.probe_stride ) * pow(2., f32(4 - merge_cfg.iteration));
 
 	// probe corner
 	var sum = sample_corner(
@@ -66,10 +65,11 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		i32(3 - merge_cfg.iteration),
 	);
 
-	// if merge_cfg.iteration > 0 {
-	// 	let last_merge = textureSample(last_merge_tex, last_merge_sampler, in.uv);
-	// 	sum = mix(sum , last_merge,last_merge.a * 0.5);
-	// }
+	if merge_cfg.iteration > 0 {
+		let last_merge = textureSample(last_merge_tex, last_merge_sampler, in.uv);
+		sum = mix(sum , last_merge, 0.5);
+	}
+
 	return sum;
 }
 
@@ -86,16 +86,18 @@ fn sample_corner(
 	let xoffset = i32(textureDimensions(cascades_tex).x)/4 * cascade_index;
 	let size = vec2<i32>(textureDimensions(cascades_tex));
 
-	let yoffset =  corner_index * (probe_stride/4);
-	let corner_size = ( probe_stride * probe_stride )/4;
+
+	let yoffset =  corner_index * probe_stride/2;
+	let corner_size = probe_stride * probe_stride/2;
 
 	for (var i=0; i < corner_size; i ++){
 
 		let x = (i%probe_stride) + xoffset;
 		let y = (i/probe_stride) + yoffset;
 
-		let probe_start = probe_coord * probe_stride;
-		let sample_coord = probe_start + vec2(x,y);
+		let probe_start		= probe_coord * probe_stride;
+		let sample_coord	= probe_start + vec2(x,y);
+
 
 		if sample_coord.x < 0 || sample_coord.y < 0 || sample_coord.y > size.y || sample_coord.x > size.x {
 			continue;

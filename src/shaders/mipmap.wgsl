@@ -28,10 +28,16 @@ fn sampleRadianceField(radianceField: texture_2d<f32>, s: sampler, uv: vec2<f32>
     let i3 = i0 + vec2<f32>(1.0, 1.0);
 
 	var sum : vec4<f32>;
-    sum += textureSample(radianceField, s, i0 / size);
-	sum += textureSample(radianceField, s, i1 / size);
-    sum += textureSample(radianceField, s, i2 / size);
-    sum += textureSample(radianceField, s, i3 / size);
+
+    let s0 = textureSample(radianceField, s, i0 / size);
+	let s1 = textureSample(radianceField, s, i1 / size);
+    let s2 = textureSample(radianceField, s, i2 / size);
+    let s3 = textureSample(radianceField, s, i3 / size);
+
+	sum = select(sum, sum + s0, s0.a > 0.01);
+	sum = select(sum, sum + s1, s1.a > 0.01);
+	sum = select(sum, sum + s2, s2.a > 0.01);
+	sum = select(sum, sum + s3, s3.a > 0.01);
 
     return sum/4.;
 }

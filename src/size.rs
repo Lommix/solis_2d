@@ -32,13 +32,13 @@ impl ComputedSize {
         let size = IVec2::new(width as i32, height as i32);
 
         let mut downscaled_size = size/scale;//+ (scale - size%scale);
-        if size.x%scale  > 0 {
-            downscaled_size.x += scale - size.x%scale;
-        }
-
-        if size.y%scale  > 0 {
-            downscaled_size.y += scale - size.y%scale;
-        }
+        // if size.x%scale  > 0 {
+        //     downscaled_size.x += scale - size.x%scale;
+        // }
+        //
+        // if size.y%scale  > 0 {
+        //     downscaled_size.y += scale - size.y%scale;
+        // }
 
         let probe_size =  downscaled_size * IVec2::new(4, 1);
 

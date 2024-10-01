@@ -85,12 +85,30 @@ fn world_rect(
     let cos_angle = cos(angle);
     let sin_angle = sin(angle);
     let rot_matrix = mat2x2<f32>(
-        vec2(cos_angle, -sin_angle),
-        vec2(sin_angle, cos_angle),
+        vec2(cos_angle, sin_angle),
+        vec2(-sin_angle, cos_angle),
     );
 
     let edge_distance = abs(center * rot_matrix) - half_extends;
     let outside = length(max(edge_distance, vec2(0.)));
     let inside = min(max(edge_distance.x, edge_distance.y), 0.);
     return outside + inside;
+}
+
+
+fn world_to_ndc(world_position: vec2<f32>, view_projection: mat4x4<f32>) -> vec2<f32> {
+    return (view_projection * vec4<f32>(world_position, 0.0, 1.0)).xy;
+}
+
+fn ndc_to_screen(ndc: vec2<f32>, screen_size: vec2<f32>) -> vec2<f32> {
+    let screen_position: vec2<f32> = (ndc + 1.0) * 0.5 * screen_size;
+    return vec2(screen_position.x, (screen_size.y - screen_position.y));
+}
+
+fn world_to_screen(
+    world_position: vec2<f32>,
+    screen_size: vec2<f32>,
+    view_projection: mat4x4<f32>
+) -> vec2<f32> {
+    return ndc_to_screen(world_to_ndc(world_position, view_projection), screen_size);
 }

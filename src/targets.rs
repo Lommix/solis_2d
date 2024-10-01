@@ -76,33 +76,40 @@ impl RenderTargets {
         );
 
 
-        let mut merge_targets = Vec::new();
+        let mut merge_targets : Vec<MergeTarget> = Vec::new();
 
         info!("--------------------------");
 
-        for i in 0 .. ( cfg.cascade_count - 1) {
+        for i in 0 .. (cfg.cascade_count) {
             // in reverse order small to large
             // following the cascade order
             // skip last one
-            let index = cfg.cascade_count - 1 - i;
+            let index = cfg.cascade_count - i - 1;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            let probe_stride = cfg.probe_stride as i32 * (2_i32).pow(index) as i32;
+            let mut probe_stride = (cfg.probe_stride as i32) * (2_i32).pow(index);
 
+            // if index == 0 {
+            //     let mut probe_stride = cfg.probe_stride as i32;
+            // }
 
             let mut merge_size = IVec2::new(
                 size.scaled.x/probe_stride,
                 size.scaled.y/probe_stride,
             );
 
-            if size.scaled.x % probe_stride > 0 {
-                merge_size.x += probe_stride - size.scaled.x%probe_stride;
-            }
+            // if i >  0 {
+            //     merge_size = merge_targets.last().unwrap().size.as_ivec2() * 2;
+            // }
 
-            if size.scaled.y % probe_stride > 0 {
-                merge_size.y += probe_stride - size.scaled.y%probe_stride;
-            }
+            // if size.scaled.x % probe_stride > 0 {
+            //     merge_size.x += probe_stride - size.scaled.x%probe_stride;
+            // }
+            //
+            // if size.scaled.y % probe_stride > 0 {
+            //     merge_size.y += probe_stride - size.scaled.y%probe_stride;
+            // }
 
-            info!("-- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
+            info!("[{i}] -- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
 
             images.insert(
                 &handle,
