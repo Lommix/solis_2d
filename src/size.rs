@@ -12,9 +12,9 @@ use crate::{constant, prelude::GiConfig, targets::RenderTargets};
 
 #[derive(Resource, Clone, Debug, ShaderType, Default)]
 pub struct ComputedSize {
-    pub native: Vec2,
-    pub scaled: Vec2,
-    pub cascade_size: Vec2,
+    pub native: IVec2,
+    pub scaled: IVec2,
+    pub cascade_size: IVec2,
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
@@ -24,19 +24,23 @@ pub struct ComputedSizeBuffer(UniformBuffer<ComputedSize>);
 impl ComputedSize {
     pub fn from_window(
         window: &Window,
-        scale: f32,
+        scale: i32,
         cascade_count : u32,
     ) -> Self {
         let width = window.physical_width();
         let height = window.physical_height();
-        let size = Vec2::new(width as f32, height as f32);
+        let size = IVec2::new(width as i32, height as i32);
 
+        let mut downscaled_size = size/scale;//+ (scale - size%scale);
+        if size.x%scale  > 0 {
+            downscaled_size.x += scale - size.x%scale;
+        }
 
-        // let downscaled_size = (size / scale) - size % scale;
-        // let probe_size = (downscaled_size + Vec2::splat(2.) - (downscaled_size % 2.)) * Vec2::new(4., 1.);
+        if size.y%scale  > 0 {
+            downscaled_size.y += scale - size.y%scale;
+        }
 
-        let downscaled_size = size / scale;//+ (scale - size%scale);
-        let probe_size =  downscaled_size * Vec2::new(4., 1.);
+        let probe_size =  downscaled_size * IVec2::new(4, 1);
 
         Self {
             native: size,
@@ -71,7 +75,8 @@ pub fn on_startup(
         return;
     };
 
-    let computed_size = ComputedSize::from_window(&window, config.scale, config.cascade_count);
+    let computed_size =
+        ComputedSize::from_window(&window, config.scale_factor, config.cascade_count);
     let targets = RenderTargets::from_size(&computed_size, &config, &mut images);
     cmd.insert_resource(targets);
     cmd.insert_resource(computed_size);
@@ -99,7 +104,8 @@ pub fn resize(
         return;
     };
 
-    let computed_size = ComputedSize::from_window(&window, config.scale, config.cascade_count);
+    let computed_size =
+        ComputedSize::from_window(&window, config.scale_factor, config.cascade_count);
     let targets = RenderTargets::from_size(&computed_size, &config, &mut images);
     cmd.insert_resource(computed_size);
     cmd.insert_resource(targets);

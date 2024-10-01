@@ -12,7 +12,7 @@ pub struct GiConfig {
     /// base ray range
     pub ray_range: f32,
     /// downscale scale
-    pub scale: f32,
+    pub scale_factor: i32,
     /// debug flags
     pub flags: GiFlags,
     /// the amount of cascades, defaults: 4
@@ -24,7 +24,7 @@ pub struct GiConfig {
 #[derive(Clone, Copy, ShaderType, Default)]
 pub struct GpuConfig {
     pub probe_size: f32,
-    pub sdf_scale: f32,
+    pub scale_factor: i32,
     pub flags: u32,
     pub cascade_count: u32,
     pub probe_stride: u32,
@@ -34,7 +34,7 @@ impl Default for GiConfig {
     fn default() -> Self {
         Self {
             ray_range: 0.8,
-            scale: 2.,
+            scale_factor: 2,
             flags: GiFlags::DEBUG_PROBE,
             cascade_count: 4,
             probe_stride: 2,
@@ -53,7 +53,7 @@ pub fn prepare(
 ) {
     let cfg = buffer.get_mut();
     cfg.probe_size = config.ray_range;
-    cfg.sdf_scale = config.scale;
+    cfg.scale_factor = config.scale_factor;
     cfg.flags = config.flags.bits();
     cfg.cascade_count = config.cascade_count;
     cfg.probe_stride = config.probe_stride;

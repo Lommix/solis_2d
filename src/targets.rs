@@ -33,7 +33,7 @@ impl RenderTargets {
         images.insert(
             &sdf_target,
             create_image(
-                size.scaled,
+                size.scaled.as_vec2(),
                 constant::SDF_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -42,7 +42,7 @@ impl RenderTargets {
         images.insert(
             &light_mipmap_target,
             create_image(
-                size.scaled,
+                size.scaled.as_vec2(),
                 constant::PROBE_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -51,7 +51,7 @@ impl RenderTargets {
         images.insert(
             &probe_target,
             create_image(
-                size.cascade_size,
+                size.cascade_size.as_vec2(),
                 constant::PROBE_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -60,7 +60,7 @@ impl RenderTargets {
         images.insert(
             &light_target,
             create_image(
-                size.scaled/2.,
+                size.scaled.as_vec2()/2.,
                 constant::LIGHT_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -69,7 +69,7 @@ impl RenderTargets {
         images.insert(
             &bounce_target,
             create_image(
-                size.scaled,
+                size.scaled.as_vec2(),
                 constant::BOUNCE_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -86,21 +86,34 @@ impl RenderTargets {
             // skip last one
             let index = cfg.cascade_count - 1 - i;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            let probe_stride = cfg.probe_stride as f32 * (2_i32).pow(index) as f32;
+            let probe_stride = cfg.probe_stride as i32 * (2_i32).pow(index) as i32;
 
-            let merge_size = size.scaled/probe_stride; // + ( Vec2::splat(probe_stride) - (size.scaled%probe_stride) ).floor();
+
+            let mut merge_size = IVec2::new(
+                size.scaled.x/probe_stride,
+                size.scaled.y/probe_stride,
+            );
+
+            if size.scaled.x % probe_stride > 0 {
+                merge_size.x += probe_stride - size.scaled.x%probe_stride;
+            }
+
+            if size.scaled.y % probe_stride > 0 {
+                merge_size.y += probe_stride - size.scaled.y%probe_stride;
+            }
+
             info!("-- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
 
             images.insert(
                 &handle,
                 create_image(
-                    merge_size,
+                    merge_size.as_vec2(),
                     constant::MERGE_FORMAT,
                     ImageSampler::nearest(),
                 ),
             );
             merge_targets.push(MergeTarget {
-                size: merge_size,
+                size: merge_size.as_vec2(),
                 img: handle
             })
         }

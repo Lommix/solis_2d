@@ -21,27 +21,26 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	/// |------|------|------|------|
 	/// |--C0--|--C1--|--C2--|--C3--| ...
 
-	// let frag_coord			= size.probe * in.uv;
-	let frag_coord			= size.probe * in.uv;
+	let frag_coord			= floor(vec2<f32>(size.probe) * in.uv);
 	let cascade_index		= floor(in.uv.x * 4.);
-	let cascade_frag_coord	= frag_coord % size.scaled;
+	let cascade_frag_coord	= vec2(frag_coord.x % f32(size.scaled.x),frag_coord.y);
 
-	let probe_stride		= f32(cfg.probe_stride) * (cascade_index+1.);
+	let probe_stride		= floor(f32(cfg.probe_stride) * (cascade_index+1.));
 	let probe_coord			= floor(cascade_frag_coord / probe_stride);
-
 	let ray_coord			= floor(cascade_frag_coord % probe_stride);
+
 	let ray_index			= ray_coord.x + ray_coord.y * probe_stride;
 	let ray_count			= probe_stride * probe_stride;
-	let angle				= ray_index/ray_count * -TAU;
+	let angle				= ray_index/ray_count * TAU + PI/4.;
 
 	// center frag coord of the probe
 	let cascade_center_frag = cascade_frag_coord + vec2(probe_stride) * 0.5;
-	let direction			= vec2(cos(angle), sin(angle));
+	let direction			= vec2(cos(angle),sin(angle));
 
 	let result = raymarch(
-		floor(cascade_center_frag),
+		cascade_center_frag,
 		direction,
-		cfg.probe_size * probe_stride * probe_stride * 10.,
+		cfg.probe_size * probe_stride * probe_stride*5.,
 		sdf_tex,
 		sdf_sampler,
 		40,
@@ -50,8 +49,8 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	out = select(out, result.last_sample, result.success == 1);
 	out.a = 1. ; //f32(result.success);
-	// out.r = ((ray_coord)/size.scaled).x;
-	// out.g = ((ray_coord)/size.scaled).y;
+	// out.r = ((ray_coord)/vec2<f32>(size.scaled)).x;
+	// out.g = ((ray_coord)/vec2<f32>(size.scaled)).y;
 
 
 	return out;
@@ -78,7 +77,7 @@ fn raymarch(
 	let size = vec2<f32>(textureDimensions(sdf_tex));
 
 	var result: RayResult;
-	result.current_pos = origin + direction * sqrt(max_dist);
+	result.current_pos = origin;
 	var travel = 0.;
 
 	for (var i = 0; i < max_steps; i ++ )

@@ -50,7 +50,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	out = mix(out, vec4(sdf_sample.rgb, 1.), debug_voronoi(cfg));
 	out = mix(out, s, debug_light(cfg));
 	out = mix(out, vec4(bounce_sample), debug_bounce(cfg));
-	out = mix(out, probe_0, debug_probe(cfg));
+	out = mix(out, probe_3, debug_probe(cfg));
 	out = mix(out, merge_sample, debug_merge(cfg));
 	// ----------
 

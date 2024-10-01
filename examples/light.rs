@@ -146,7 +146,7 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
         ui.label("ray range");
         ui.add(egui::Slider::new(&mut gi_config.ray_range, (0.)..=1.));
         ui.label("scale");
-        ui.add(egui::Slider::new(&mut gi_config.scale, (1.)..=10.));
+        ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1)..=10));
 
         flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
         flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_config, "VORONOI");
