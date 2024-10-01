@@ -25,35 +25,36 @@ struct PointLight{
 
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
-	let sdf = textureSample(sdf_tex, sdf_sampler, in.uv);
-
-	let aspect_ratio = computed_size.native.y / computed_size.native.x;
-	var light_level = 0.;
-
-	var light : vec3<f32>;
-	var hit_count = 0;
-
-	let rand2pi = random(in.uv * 2.0);
-	let golden_angle = PI * 0.7639320225;
-
-	for (var i = 0; i < i32(cfg.sample_count); i++){
-
-		let angle = rand2pi + golden_angle * f32(i);
-		let dir = normalize(vec2(sin(angle), cos(angle)));
-
-		let result = raymarch(
-			in.uv,
-			dir,
-			sdf_tex,
-			sdf_sampler,
-			32,
-		);
-
-		if result.success == 1{
-			light += textureSample(sdf_tex, sdf_sampler, result.current_pos).rgb;
-			hit_count ++;
-		}
-	}
-
-	return vec4(light/f32(hit_count), 1.);
+	// let sdf = textureSample(sdf_tex, sdf_sampler, in.uv);
+	//
+	// let aspect_ratio = computed_size.native.y / computed_size.native.x;
+	// var light_level = 0.;
+	//
+	// var light : vec3<f32>;
+	// var hit_count = 0;
+	//
+	// let rand2pi = random(in.uv * 2.0);
+	// let golden_angle = PI * 0.7639320225;
+	//
+	// for (var i = 0; i < i32(cfg.sample_count); i++){
+	//
+	// 	let angle = rand2pi + golden_angle * f32(i);
+	// 	let dir = normalize(vec2(sin(angle), cos(angle)));
+	//
+	// 	let result = raymarch(
+	// 		in.uv,
+	// 		dir,
+	// 		sdf_tex,
+	// 		sdf_sampler,
+	// 		32,
+	// 	);
+	//
+	// 	if result.success == 1{
+	// 		light += textureSample(sdf_tex, sdf_sampler, result.current_pos).rgb;
+	// 		hit_count ++;
+	// 	}
+	// }
+	//
+	// return vec4(light/f32(hit_count), 1.);
+	return vec4(1.);
 }

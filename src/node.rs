@@ -1,3 +1,16 @@
+use crate::{
+    bounce::BouncePipeline,
+    common::Light2dCameraTag,
+    composite::CompositePipeline,
+    config::ConfigBuffer,
+    light::{LightBuffers, LightPipeline},
+    merge::{MergePipeline, MergeUniforms},
+    mipmap::MipMapPipeline,
+    probe::ProbePipeline,
+    sdf::{SdfBuffers, SdfPipeline},
+    size::ComputedSizeBuffer,
+    targets::RenderTargets,
+};
 use bevy::{
     ecs::{query::QueryItem, system::lifetimeless::Read},
     prelude::*,
@@ -12,19 +25,6 @@ use bevy::{
         texture::GpuImage,
         view::{ViewTarget, ViewUniformOffset, ViewUniforms},
     },
-};
-
-use crate::{
-    bounce::BouncePipeline,
-    common::Light2dCameraTag,
-    composite::CompositePipeline,
-    config::ConfigBuffer,
-    light::{LightBuffers, LightPipeline},
-    merge::{MergePipeline, MergeUniforms},
-    probe::ProbePipeline,
-    sdf::{SdfBuffers, SdfPipeline},
-    size::ComputedSizeBuffer,
-    targets::RenderTargets,
 };
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, RenderLabel, Debug)]
@@ -63,6 +63,7 @@ impl render_graph::ViewNode for LightNode {
         let probe_pipeline = world.resource::<ProbePipeline>();
         let merge_pipeline = world.resource::<MergePipeline>();
         let merge_unifrom = world.resource::<MergeUniforms>();
+        let mipmap_pipeline = world.resource::<MipMapPipeline>();
 
         let Some(render_targets) = world.get_resource::<RenderTargets>() else {
             warn!("no targets");
@@ -96,13 +97,18 @@ impl render_graph::ViewNode for LightNode {
             return Ok(());
         };
 
+        let Some(mipmap_render_pipeline) = pipeline_cache.get_render_pipeline(mipmap_pipeline.id)
+        else {
+            warn!("mipmap pipeline missing");
+            return Ok(());
+        };
+
         // ------------------------------------
 
         let (
             Some(view_uniform_binding),
             Some(circle_binding),
             Some(rect_binding),
-            // Some(light_binding),
             Some(size_binding),
             Some(config_binding),
             Some(merge_uniform_binding),
@@ -110,7 +116,6 @@ impl render_graph::ViewNode for LightNode {
             world.resource::<ViewUniforms>().uniforms.binding(),
             sdf_buffers.circle_buffer.binding(),
             sdf_buffers.rect_buffer.binding(),
-            // light_buffers.point_light_buffer.binding(),
             size_buffer.binding(),
             config_buffer.binding(),
             merge_unifrom.buffer.binding(),
@@ -127,6 +132,11 @@ impl render_graph::ViewNode for LightNode {
             gpu_images.get(&render_targets.bounce_target),
         ) else {
             warn!("failed to load targets");
+            return Ok(());
+        };
+
+        let Some(mipmap_target) = gpu_images.get(&render_targets.light_mipmap_target) else {
+            warn!("failed to load mipmap target");
             return Ok(());
         };
 
@@ -202,6 +212,7 @@ impl render_graph::ViewNode for LightNode {
         // small to high resolution ...
         for i in 0..merge_targets.len() {
             let last_index = i.checked_sub(1).unwrap_or(merge_targets.len() - 1);
+
             let merge_bind_group = render_context.render_device().create_bind_group(
                 Some("merge_bind_group".into()),
                 &merge_pipeline.layout,
@@ -235,73 +246,36 @@ impl render_graph::ViewNode for LightNode {
             render_pass.draw(0..3, 0..1);
         }
 
+        // -------------------------------------------
+        // create light mimap
         // ---------------------------------------------------------------
-        // calculate light
 
-        // let light_bind_group = render_context.render_device().create_bind_group(
-        //     Some("light_bind_group".into()),
-        //     &light_pipeline.layout,
-        //     &BindGroupEntries::sequential((
-        //         view_uniform_binding.clone(),
-        //         &sdf_target.texture_view,
-        //         &sdf_target.sampler,
-        //         light_binding,
-        //         size_binding.clone(),
-        //         config_binding.clone(),
-        //     )),
-        // );
-        //
-        // {
-        //     let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-        //         label: Some("light_pass".into()),
-        //         color_attachments: &[Some(RenderPassColorAttachment {
-        //             view: &light_target.texture_view,
-        //             resolve_target: None,
-        //             ops: Operations::default(),
-        //         })],
-        //         depth_stencil_attachment: None,
-        //         timestamp_writes: None,
-        //         occlusion_query_set: None,
-        //     });
-        //
-        //     render_pass.set_render_pipeline(light_render_pipeline);
-        //     render_pass.set_bind_group(0, &light_bind_group, &[view_offset.offset]);
-        //     render_pass.draw(0..3, 0..1);
-        // }
+        let mipmap_bind_group = render_context.render_device().create_bind_group(
+            Some("mipmap_bind_group".into()),
+            &mipmap_pipeline.layout,
+            &BindGroupEntries::sequential((
+                &merge_targets.last().unwrap().texture_view,
+                &merge_targets.last().unwrap().sampler,
+                size_binding.clone(),
+            )),
+        );
+        {
+            let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
+                label: Some("mipmap_pass".into()),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &mipmap_target.texture_view,
+                    resolve_target: None,
+                    ops: Operations::default(),
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
 
-        // ---------------------------------------------------------------
-        // bounce light
-
-        // let bounce_bind_group = render_context.render_device().create_bind_group(
-        //     Some("bounce_bind_group".into()),
-        //     &bounce_pipeline.layout,
-        //     &BindGroupEntries::sequential((
-        //         view_uniform_binding,
-        //         &sdf_target.texture_view,
-        //         &sdf_target.sampler,
-        //         &light_target.texture_view,
-        //         &light_target.sampler,
-        //         size_binding.clone(),
-        //         config_binding.clone(),
-        //     )),
-        // );
-        // {
-        //     let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-        //         label: Some("bounce_pass".into()),
-        //         color_attachments: &[Some(RenderPassColorAttachment {
-        //             view: &bounce_target.texture_view,
-        //             resolve_target: None,
-        //             ops: Operations::default(),
-        //         })],
-        //         depth_stencil_attachment: None,
-        //         timestamp_writes: None,
-        //         occlusion_query_set: None,
-        //     });
-        //
-        //     render_pass.set_render_pipeline(bounce_render_pipeline);
-        //     render_pass.set_bind_group(0, &bounce_bind_group, &[view_offset.offset]);
-        //     render_pass.draw(0..3, 0..1);
-        // }
+            render_pass.set_render_pipeline(mipmap_render_pipeline);
+            render_pass.set_bind_group(0, &mipmap_bind_group, &[0]);
+            render_pass.draw(0..3, 0..1);
+        }
 
         // ---------------------------------------------------------------
         // composite
@@ -312,16 +286,18 @@ impl render_graph::ViewNode for LightNode {
             &BindGroupEntries::sequential((
                 post_process.source,
                 &sdf_target.sampler, //@todo: fix this
-                &light_target.texture_view,
-                &light_target.sampler,
+                &mipmap_target.texture_view,
+                &light_pipeline.rad_sampler,
                 &sdf_target.texture_view,
                 &sdf_target.sampler,
                 &bounce_target.texture_view,
                 &bounce_target.sampler,
                 &probe_target.texture_view,
                 &probe_target.sampler,
-                &merge_targets.first().unwrap().texture_view,
-                &merge_targets.first().unwrap().sampler,
+                &merge_targets.last().unwrap().texture_view,
+                // &merge_targets.last().unwrap().sampler,
+                // merge filter
+                &light_pipeline.sampler,
                 config_binding,
                 size_binding,
             )),

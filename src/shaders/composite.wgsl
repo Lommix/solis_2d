@@ -40,19 +40,52 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let probe_3 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 3.);
 
 	// super simple ultra fast merge
-	let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
+	// let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
+
+	let s = sampleRadianceField(light_tex,1.,in.uv);
+	out = mix(main_sample,s, min(sdf_sample.a,0.));
 
 	// debug view
 	out = mix(out, vec4(abs(sdf_sample.a/100.)), debug_sdf(cfg));
 	out = mix(out, vec4(sdf_sample.rgb, 1.), debug_voronoi(cfg));
-	out = mix(out, vec4(light_sample), debug_light(cfg));
+	out = mix(out, s, debug_light(cfg));
 	out = mix(out, vec4(bounce_sample), debug_bounce(cfg));
 	out = mix(out, probe_0, debug_probe(cfg));
 	out = mix(out, merge_sample, debug_merge(cfg));
 	// ----------
 
+
 	return out;
 }
+
+fn sampleRadianceField(radianceField: texture_2d<f32>, distance : f32, uv: vec2<f32>) -> vec4<f32> {
+    // Get the size of the texture
+    let size = vec2<f32>(textureDimensions(radianceField));
+    // Calculate the texel coordinates
+    let texelCoords = uv * size;
+
+    // Get the integer part (top-left corner of the texel's 2x2 block)
+    let i0 = floor(texelCoords);
+    let i1 = i0 + vec2<f32>(1.0, 0.0)*distance;
+    let i2 = i0 + vec2<f32>(0.0, 1.0)*distance;
+    let i3 = i0 + vec2<f32>(1.0, 1.0)*distance;
+    // Sample the texture at each of the texel positions
+    let sample0 = textureLoad(radianceField, vec2<i32>(i0), 0);
+    let sample1 = textureLoad(radianceField, vec2<i32>(i1), 0);
+    let sample2 = textureLoad(radianceField, vec2<i32>(i2), 0);
+    let sample3 = textureLoad(radianceField, vec2<i32>(i3), 0);
+
+    // Calculate the fractional part of the texel coordinates
+    let fractCoords = fract(uv * size);
+
+    // Interpolate between the samples
+    let sample01 = mix(sample0, sample1, fractCoords.x);
+    let sample23 = mix(sample2, sample3, fractCoords.x);
+    let finalSample = mix(sample01, sample23, fractCoords.y);
+
+    return finalSample;
+}
+
 
 fn lin_to_srgb(color: vec3<f32>) -> vec3<f32> {
    let x = color * 12.92;

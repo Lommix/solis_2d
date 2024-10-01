@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::Duration};
+#![allow(unused)]
 
 use bevy::{
     asset::{embedded_asset, load_internal_asset},
@@ -11,9 +11,11 @@ use bevy::{
         render_resource::Source,
         Render, RenderApp, RenderSet,
     },
+    time::common_conditions::on_timer,
     window::WindowResized,
 };
 use size::ComputedSizeBuffer;
+use std::{path::PathBuf, time::Duration};
 
 mod bounce;
 mod common;
@@ -22,6 +24,7 @@ mod config;
 mod constant;
 mod light;
 mod merge;
+mod mipmap;
 mod node;
 mod probe;
 mod sdf;
@@ -33,7 +36,7 @@ pub mod prelude {
     pub use super::config::{GiConfig, GiFlags};
     pub use super::light::PointLight2d;
     pub use super::sdf::{Emitter, Occluder, SdfShape};
-    pub use super::size::ComputedSize;
+    pub use super::size::{ComputedSize, ResizeEvent};
     pub use super::targets::RenderTargets;
     pub use super::LightPlugin;
 }
@@ -56,12 +59,14 @@ impl Plugin for LightPlugin {
                 ExtractResourcePlugin::<config::GiConfig>::default(),
                 ExtractComponentPlugin::<common::Light2dCameraTag>::default(),
             ))
+            .add_event::<size::ResizeEvent>()
+            .observe(size::resize)
             .add_systems(PreStartup, size::on_startup)
             .add_systems(Update, size::on_win_resize.run_if(on_event::<WindowResized>()),
         );
 
         // adds some hot reloading for dev
-        #[cfg(target_feature = "dev")]
+        #[cfg(debug_assertions)]
         app.add_systems(Last, watch.run_if(on_timer(Duration::from_millis(50))));
 
         // ---------------
@@ -93,6 +98,7 @@ impl Plugin for LightPlugin {
         embedded_asset!(app, "shaders/bounce.wgsl");
         embedded_asset!(app, "shaders/sdf.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
+        embedded_asset!(app, "shaders/mipmap.wgsl");
         // ---------------
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -140,7 +146,8 @@ impl Plugin for LightPlugin {
             .init_resource::<config::ConfigBuffer>()
             .init_resource::<probe::ProbePipeline>()
             .init_resource::<merge::MergePipeline>()
-            .init_resource::<merge::MergeUniforms>();
+            .init_resource::<merge::MergeUniforms>()
+            .init_resource::<mipmap::MipMapPipeline>();
     }
 }
 

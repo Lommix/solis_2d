@@ -35,6 +35,7 @@ fn raymarch(
 			break;
 		}
 
+
 		// is hit?
 		if current_distance < MIN_DISTANCE {
 			result.success = 1;
@@ -90,46 +91,47 @@ fn raymarch_bounce(
 fn raymarch_probe(
 	origin: vec2<f32>,
 	direction: vec2<f32>,
-	offset: f32,
 	max_dist: f32,
 	sdf_tex: texture_2d<f32>,
 	sdf_sampler: sampler,
 	max_steps: i32,
-	size: vec2<f32>,
 ) -> RayResult
 {
+
+	let size = vec2<f32>(textureDimensions(sdf_tex));
+
 	var result: RayResult;
-	result.current_pos = origin + ( direction*offset )/size;
+	result.current_pos = origin;
 	var travel = 0.;
 
 	for (var i = 0; i < max_steps; i ++ )
 	{
-		result.steps ++;
-		result.last_sample = textureSample(sdf_tex, sdf_sampler, result.current_pos);
-		let current_distance = result.last_sample.a;
-
 		// out of bounds
 		if
-			result.current_pos.x > 1. || result.current_pos.y > 1. ||
+			result.current_pos.x > size.x || result.current_pos.y > size.y ||
 			result.current_pos.x < 0. || result.current_pos.y < 0.
 		{
 			break;
 		}
 
+		result.steps ++;
+		result.last_sample = textureLoad(sdf_tex, vec2<i32>(result.current_pos), 0);
+		let current_distance = result.last_sample.a;
+
 		// is hit?
-		if current_distance < 0. {
+		if current_distance < 0.1 {
 			result.success = 1;
 			break;
 		}
 
 		let to_next = direction * current_distance;
-		travel += length(to_next);
+		travel += current_distance;
 
-		if travel > max_dist {
+		if travel > max_dist * 20.{
 			break;
 		}
 
-		result.current_pos = result.current_pos + to_next/size;
+		result.current_pos = result.current_pos + to_next;
 	}
 
 

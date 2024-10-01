@@ -1,4 +1,4 @@
-use crate::{constant, merge::MergeUniform, prelude::ComputedSize};
+use crate::{config::GiConfig, constant, merge::MergeUniform, prelude::ComputedSize};
 use bevy::{
     prelude::*,
     render::{
@@ -18,15 +18,17 @@ pub struct RenderTargets {
     pub merge_targets: Vec<MergeTarget>,
     pub light_target: Handle<Image>,
     pub bounce_target: Handle<Image>,
+    pub light_mipmap_target: Handle<Image>,
 }
 
 impl RenderTargets {
     #[rustfmt::skip]
-    pub fn from_size(size: &ComputedSize, images: &mut Assets<Image>) -> Self {
-        let sdf_target      = Handle::weak_from_u128(905214787963254423236589025);
-        let probe_target    = Handle::weak_from_u128(531037848998654123701989143);
-        let light_target    = Handle::weak_from_u128(432123084179531435312554421);
-        let bounce_target   = Handle::weak_from_u128(139987876583680013788430019);
+    pub fn from_size(size: &ComputedSize, cfg: &GiConfig, images: &mut Assets<Image>) -> Self {
+        let sdf_target          = Handle::weak_from_u128(905214787963254423236589025);
+        let probe_target        = Handle::weak_from_u128(531037848998654123701989143);
+        let light_target        = Handle::weak_from_u128(432123084179531435312554421);
+        let bounce_target       = Handle::weak_from_u128(139987876583680013788430019);
+        let light_mipmap_target = Handle::weak_from_u128(139987876583680013788430531);
 
         images.insert(
             &sdf_target,
@@ -38,9 +40,18 @@ impl RenderTargets {
         );
 
         images.insert(
+            &light_mipmap_target,
+            create_image(
+                size.scaled,
+                constant::PROBE_FORMAT,
+                ImageSampler::nearest(),
+            ),
+        );
+
+        images.insert(
             &probe_target,
             create_image(
-                size.probe,
+                size.cascade_size,
                 constant::PROBE_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -49,7 +60,7 @@ impl RenderTargets {
         images.insert(
             &light_target,
             create_image(
-                size.scaled,
+                size.scaled/2.,
                 constant::LIGHT_FORMAT,
                 ImageSampler::nearest(),
             ),
@@ -68,15 +79,18 @@ impl RenderTargets {
         let mut merge_targets = Vec::new();
 
         info!("--------------------------");
-        for i in 0 .. ( size.cascade_count - 1 ) {
+
+        for i in 0 .. ( cfg.cascade_count - 1) {
             // in reverse order small to large
             // following the cascade order
-            let index = size.cascade_count - 2 - i;
+            // skip last one
+            let index = cfg.cascade_count - 1 - i;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            let probe_stride = (2_i32).pow(index) as f32;
-            let merge_size = size.scaled/probe_stride ;//+ Vec2::splat(probe_stride) - (size.scaled%probe_stride) ;
+            let probe_stride = cfg.probe_stride as f32 * (2_i32).pow(index) as f32;
 
-            info!("-- size {merge_size}");
+            let merge_size = size.scaled/probe_stride; // + ( Vec2::splat(probe_stride) - (size.scaled%probe_stride) ).floor();
+            info!("-- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
+
             images.insert(
                 &handle,
                 create_image(
@@ -97,6 +111,7 @@ impl RenderTargets {
             light_target,
             merge_targets,
             bounce_target,
+            light_mipmap_target,
         }
     }
 

@@ -1,5 +1,6 @@
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
+    ecs::system::EntityCommands,
     input::mouse::MouseWheel,
     prelude::*,
     render::texture::ImageSamplerDescriptor,
@@ -26,16 +27,16 @@ pub fn main() {
             LightPlugin::default(),
             FrameTimeDiagnosticsPlugin,
         ))
-        .add_systems(Startup, (setup,))
+        .add_systems(Startup, (setup, debug_targets))
         .add_systems(
             Update,
             (
-                debug_targets,
                 update,
                 scroll,
                 move_camera,
                 move_light,
                 spawn_light,
+                on_change,
                 clear,
                 config,
                 monitor,
@@ -51,7 +52,7 @@ struct Spin(f32);
 struct FollowMouse;
 
 fn monitor(diagnostics: Res<DiagnosticsStore>) {
-    let Some(fps) = diagnostics
+    let Some(_fps) = diagnostics
         .get(&bevy::diagnostic::FrameTimeDiagnosticsPlugin::FRAME_TIME)
         .map(|fps| fps.value())
         .flatten()
@@ -107,81 +108,44 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
     ));
 }
 
-fn debug_targets(
-    mut cmd: Commands,
-    render_targets: Res<RenderTargets>,
-    mut delay: Local<f32>,
-    time: Res<Time>,
-) {
-    *delay += time.delta_seconds();
-
-    if *delay < 5. || *delay > 100. {
-        return;
-    }
-
+fn debug_targets(mut cmd: Commands, render_targets: Res<RenderTargets>) {
     cmd.spawn(NodeBundle {
-        border_color: BorderColor(Color::BLACK),
-        background_color: BackgroundColor(Color::WHITE),
         style: Style {
             border: UiRect::all(Val::Px(5.)),
             padding: UiRect::all(Val::Px(2.)),
+            flex_direction: FlexDirection::Column,
             ..default()
         },
         ..default()
     })
     .with_children(|cmd| {
-        cmd.spawn(ImageBundle {
-            image: UiImage {
-                texture: render_targets.sdf_target.clone(),
-                ..default()
-            },
-            style: Style {
-                width: Val::Px(200.),
-                height: Val::Px(200.),
-                ..default()
-            },
-            ..default()
+        let node = NodeBundle::default();
+        cmd.spawn(node).with_children(|cmd| {
+            cmd.preview(render_targets.sdf_target.clone(), 200., 200.);
+            cmd.preview(render_targets.probe_target.clone(), 800., 200.);
         });
 
-        for tar in render_targets.merge_targets.iter() {
-            cmd.spawn(ImageBundle {
-                image: UiImage {
-                    texture: tar.img.clone(),
-                    ..default()
-                },
-                style: Style {
-                    width: Val::Px(200.),
-                    height: Val::Px(200.),
-                    ..default()
-                },
-                ..default()
-            });
-        }
-
-        cmd.spawn(ImageBundle {
-            image: UiImage {
-                texture: render_targets.probe_target.clone(),
-                ..default()
-            },
-            style: Style {
-                width: Val::Px(400.),
-                height: Val::Px(100.),
-                ..default()
-            },
-            ..default()
+        let mut node = NodeBundle::default();
+        node.style.flex_direction = FlexDirection::Column;
+        cmd.spawn(node).with_children(|cmd| {
+            for m in render_targets.merge_targets.iter() {
+                cmd.preview(m.img.clone(), 300., 300.);
+            }
         });
     });
-
-    *delay = 500.;
 }
 
 fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
     egui::Window::new("Gi Config").show(egui.ctx_mut(), |ui| {
-        ui.label("Sample Count");
-        ui.add(egui::Slider::new(&mut gi_config.sample_count, 0..=50));
-        ui.label("Probe Size");
-        ui.add(egui::Slider::new(&mut gi_config.probe_size, (0.)..=1.));
-        ui.label("Scale");
+        ui.label("probe stride");
+        ui.add(egui::Slider::new(&mut gi_config.probe_stride, (2)..=16));
+
+        ui.label("cascade count");
+        ui.add(egui::Slider::new(&mut gi_config.cascade_count, (1)..=8));
+
+        ui.label("ray range");
+        ui.add(egui::Slider::new(&mut gi_config.ray_range, (0.)..=1.));
+        ui.label("scale");
         ui.add(egui::Slider::new(&mut gi_config.scale, (1.)..=10.));
 
         flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
@@ -193,6 +157,13 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
         // ui.image("file://assets/box.png");
         // ui.separator();
     });
+}
+
+fn on_change(mut cmd: Commands, config: Res<GiConfig>, mut local: Local<GiConfig>) {
+    if *local != *config {
+        local.clone_from(&config);
+        cmd.trigger(ResizeEvent);
+    }
 }
 
 fn flag_checkbox(bit: GiFlags, ui: &mut egui::Ui, cfg: &mut GiConfig, label: &str) {
@@ -243,6 +214,21 @@ fn spawn_light(
         );
 
         emitter.color = color;
+    }
+
+    if inputs.just_pressed(MouseButton::Right) {
+        cmd.spawn((
+            Emitter {
+                shape: emitter.shape.clone(),
+                color: Color::BLACK,
+                intensity: 1.,
+            },
+            SpriteBundle {
+                texture: server.load("lamp.png"),
+                transform: transform.clone(),
+                ..default()
+            },
+        ));
     }
 }
 
@@ -335,4 +321,25 @@ fn move_light(
 
     light_transform.translation.x = cursor_pos.x;
     light_transform.translation.y = cursor_pos.y;
+}
+
+trait Preview {
+    fn preview(&mut self, handle: Handle<Image>, width: f32, height: f32) -> EntityCommands;
+}
+
+impl Preview for ChildBuilder<'_> {
+    fn preview(&mut self, handle: Handle<Image>, width: f32, height: f32) -> EntityCommands<'_> {
+        self.spawn(ImageBundle {
+            image: UiImage {
+                texture: handle,
+                ..default()
+            },
+            style: Style {
+                width: Val::Px(width),
+                height: Val::Px(height),
+                ..default()
+            },
+            ..default()
+        })
+    }
 }

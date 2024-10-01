@@ -5,9 +5,9 @@ use bevy::{
         render_resource::{
             binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, FragmentState, MultisampleState, PipelineCache, PrimitiveState,
-            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, ShaderType, StorageBuffer,
-            TextureSampleType,
+            ColorWrites, FilterMode, FragmentState, MultisampleState, PipelineCache,
+            PrimitiveState, RenderPipelineDescriptor, Sampler, SamplerBindingType,
+            SamplerDescriptor, ShaderStages, ShaderType, StorageBuffer, TextureSampleType,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::{ImageSampler, ImageSamplerDescriptor},
@@ -22,6 +22,8 @@ use crate::{config::GpuConfig, constant::LIGHT_FORMAT, prelude::ComputedSize};
 pub struct LightPipeline {
     pub layout: BindGroupLayout,
     pub id: CachedRenderPipelineId,
+    pub sampler: Sampler,
+    pub rad_sampler: Sampler,
 }
 
 impl FromWorld for LightPipeline {
@@ -42,6 +44,14 @@ impl FromWorld for LightPipeline {
                 ),
             ),
         );
+
+        let main_sampler = render_device.create_sampler(&SamplerDescriptor::default());
+        let radiance_sampler = render_device.create_sampler(&SamplerDescriptor {
+            label: Some("radiance_sampler"),
+            mipmap_filter: FilterMode::Linear,
+            mag_filter: FilterMode::Linear,
+            ..default()
+        });
 
         let server = world.resource::<AssetServer>();
         // let shader = server.load("light.wgsl");
@@ -71,7 +81,12 @@ impl FromWorld for LightPipeline {
                     }),
                 });
 
-        Self { layout, id }
+        Self {
+            layout,
+            id,
+            sampler: main_sampler,
+            rad_sampler: radiance_sampler,
+        }
     }
 }
 

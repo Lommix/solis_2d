@@ -1,54 +1,56 @@
+use crate::{
+    config::GpuConfig,
+    constant::MERGE_FORMAT,
+    prelude::{ComputedSize, GiConfig},
+    targets::RenderTargets,
+};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
     render::{
         render_resource::{
-            binding_types::{sampler, storage_buffer_read_only, texture_2d, uniform_buffer},
+            binding_types::{sampler, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, FragmentState, MultisampleState, PipelineCache, PrimitiveState,
-            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, TextureSampleType,
+            ColorWrites, DynamicUniformBuffer, FragmentState, MultisampleState, PipelineCache,
+            PrimitiveState, RenderPipelineDescriptor, SamplerBindingType, ShaderStages, ShaderType,
+            TextureSampleType, UniformBuffer,
         },
-        renderer::RenderDevice,
-        view::ViewUniform,
+        renderer::{RenderDevice, RenderQueue},
+        texture::GpuImage,
+        Extract,
     },
 };
 
-use crate::{config::GpuConfig, constant::PROBE_FORMAT, prelude::ComputedSize};
-
-/// crates a the cascade image
+/// creates the final mipmap from cascade 0
 #[derive(Resource)]
-pub struct ProbePipeline {
+pub struct MipMapPipeline {
     pub layout: BindGroupLayout,
     pub id: CachedRenderPipelineId,
 }
 
-impl FromWorld for ProbePipeline {
+impl FromWorld for MipMapPipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let layout = render_device.create_bind_group_layout(
-            "probe_pipelin_layout",
+            "mipmap_layout",
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::FRAGMENT,
                 (
-                    uniform_buffer::<ViewUniform>(true),
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                    uniform_buffer::<ComputedSize>(false),
-                    uniform_buffer::<GpuConfig>(false),
+                    sampler(SamplerBindingType::NonFiltering),
+                    uniform_buffer::<ComputedSize>(true),
                 ),
             ),
         );
 
         let server = world.resource::<AssetServer>();
-        // let shader = server.load("light.wgsl");
-        let shader = server.load("embedded://lommix_light/shaders/probes.wgsl");
-        // let shader = super::constant::LIGHT_SHADER;
+        let shader: Handle<Shader> = server.load("embedded://lommix_light/shaders/mipmap.wgsl");
 
         let id =
             world
                 .resource_mut::<PipelineCache>()
                 .queue_render_pipeline(RenderPipelineDescriptor {
-                    label: Some("probe_pipeline".into()),
+                    label: Some("mipmap_pipeline".into()),
                     layout: vec![layout.clone()],
                     push_constant_ranges: vec![],
                     vertex: fullscreen_shader_vertex_state(),
@@ -60,13 +62,15 @@ impl FromWorld for ProbePipeline {
                         shader_defs: vec![],
                         entry_point: "fragment".into(),
                         targets: vec![Some(ColorTargetState {
-                            format: PROBE_FORMAT,
+                            format: MERGE_FORMAT,
                             blend: None,
                             write_mask: ColorWrites::ALL,
                         })],
                     }),
                 });
 
-        Self { layout, id }
+        dbg!(&id);
+
+        Self { id, layout }
     }
 }

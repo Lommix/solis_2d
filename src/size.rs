@@ -14,9 +14,7 @@ use crate::{constant, prelude::GiConfig, targets::RenderTargets};
 pub struct ComputedSize {
     pub native: Vec2,
     pub scaled: Vec2,
-    pub probe: Vec2,
-    pub down_scale_factor: f32,
-    pub cascade_count: u32,
+    pub cascade_size: Vec2,
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
@@ -32,14 +30,18 @@ impl ComputedSize {
         let width = window.physical_width();
         let height = window.physical_height();
         let size = Vec2::new(width as f32, height as f32);
-        let downscaled_size = (size / scale) - size % scale;
-        let probe_size = (downscaled_size + Vec2::splat(2.) - (downscaled_size % 2.)) * Vec2::new(4., 1.);
+
+
+        // let downscaled_size = (size / scale) - size % scale;
+        // let probe_size = (downscaled_size + Vec2::splat(2.) - (downscaled_size % 2.)) * Vec2::new(4., 1.);
+
+        let downscaled_size = size / scale;//+ (scale - size%scale);
+        let probe_size =  downscaled_size * Vec2::new(4., 1.);
+
         Self {
             native: size,
             scaled: downscaled_size,
-            probe: probe_size,
-            down_scale_factor: constant::SDF_DOWNSCALE_FACTOR,
-            cascade_count,
+            cascade_size: probe_size,
         }
     }
 }
@@ -48,9 +50,7 @@ pub fn extract_size(mut buffer: ResMut<ComputedSizeBuffer>, size: Extract<Res<Co
     let buffer = buffer.get_mut();
     buffer.native = size.native;
     buffer.scaled = size.scaled;
-    buffer.down_scale_factor = size.down_scale_factor;
-    buffer.probe = size.probe;
-    buffer.cascade_count = size.cascade_count;
+    buffer.cascade_size = size.cascade_size;
 }
 
 pub fn prepare_bindgroup(
@@ -72,28 +72,35 @@ pub fn on_startup(
     };
 
     let computed_size = ComputedSize::from_window(&window, config.scale, config.cascade_count);
-    let targets = RenderTargets::from_size(&computed_size, &mut images);
+    let targets = RenderTargets::from_size(&computed_size, &config, &mut images);
     cmd.insert_resource(targets);
     cmd.insert_resource(computed_size);
 }
 
-pub fn on_win_resize(
-    mut events: EventReader<WindowResized>,
-    mut cmd: Commands,
-    window: Query<&Window, With<PrimaryWindow>>,
-    mut images: ResMut<Assets<Image>>,
-    config: Res<GiConfig>,
-) {
+pub fn on_win_resize(mut events: EventReader<WindowResized>, mut cmd: Commands) {
     let Some(event) = events.read().next() else {
         return;
     };
 
-    let Ok(window) = window.get(event.window) else {
+    cmd.trigger(ResizeEvent);
+}
+
+#[derive(Event)]
+pub struct ResizeEvent;
+
+pub fn resize(
+    trigger: Trigger<ResizeEvent>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    config: Res<GiConfig>,
+    mut cmd: Commands,
+    mut images: ResMut<Assets<Image>>,
+) {
+    let Ok(window) = window.get_single() else {
         return;
     };
 
     let computed_size = ComputedSize::from_window(&window, config.scale, config.cascade_count);
-    let targets = RenderTargets::from_size(&computed_size, &mut images);
+    let targets = RenderTargets::from_size(&computed_size, &config, &mut images);
     cmd.insert_resource(computed_size);
     cmd.insert_resource(targets);
 }

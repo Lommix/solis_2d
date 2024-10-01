@@ -7,32 +7,37 @@ use bevy::{
     },
 };
 
-#[derive(Resource, ExtractResource, Clone, Copy)]
+#[derive(Resource, ExtractResource, Clone, Copy, PartialEq)]
 pub struct GiConfig {
-    pub sample_count: u32,
-    pub probe_size: f32,
+    /// base ray range
+    pub ray_range: f32,
+    /// downscale scale
     pub scale: f32,
+    /// debug flags
     pub flags: GiFlags,
+    /// the amount of cascades, defaults: 4
     pub cascade_count: u32,
+    /// the starting base, defaults 8 (8x8)
+    pub probe_stride: u32,
 }
 
 #[derive(Clone, Copy, ShaderType, Default)]
 pub struct GpuConfig {
-    pub sample_count: u32,
     pub probe_size: f32,
     pub sdf_scale: f32,
     pub flags: u32,
     pub cascade_count: u32,
+    pub probe_stride: u32,
 }
 
 impl Default for GiConfig {
     fn default() -> Self {
         Self {
-            sample_count: 32,
-            probe_size: 0.1,
+            ray_range: 0.8,
             scale: 2.,
-            flags: GiFlags::DEFAULT,
+            flags: GiFlags::DEBUG_PROBE,
             cascade_count: 4,
+            probe_stride: 2,
         }
     }
 }
@@ -47,11 +52,11 @@ pub fn prepare(
     config: Res<GiConfig>,
 ) {
     let cfg = buffer.get_mut();
-    cfg.sample_count = config.sample_count;
-    cfg.probe_size = config.probe_size;
+    cfg.probe_size = config.ray_range;
     cfg.sdf_scale = config.scale;
     cfg.flags = config.flags.bits();
     cfg.cascade_count = config.cascade_count;
+    cfg.probe_stride = config.probe_stride;
     buffer.write_buffer(&render_device, &render_queue);
 }
 

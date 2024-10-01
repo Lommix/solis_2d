@@ -43,121 +43,71 @@ struct MergeConfig {
 
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
-	var out : vec4<f32>;
-
 
 	// swap 0 1 to make it counter clockwise
 	var positions = array<i32,4>(1,0,2,3);
 
-	let frag_pos = merge_cfg.target_size * in.uv;
-	let cascade_pos = frag_pos/2;
-	let probe_pos = frag_pos%2;
-	let corner_index = positions[i32(probe_pos.x + probe_pos.y * 2)];
+	let frag_pos = floor(merge_cfg.target_size * in.uv);
 
-	let probe_stride = pow(2.,f32(3 - merge_cfg.iteration));
-	let probe_pixel_uv_size = 1./computed_size.scaled;
-	let segment_size =  probe_stride * probe_stride;
+	let cascade_probe_pos = floor(frag_pos/2);
+	let corner_pos = frag_pos%2.;
 
-	var sum : vec4<f32>;
-	var count = 0;
+	// counter clockwise index
+	let corner_index = positions[i32(corner_pos.x) + i32(corner_pos.y * 2)];
 
-	let start_uv = probe_pixel_uv_size * vec2<f32>(cascade_pos) * probe_stride;
+	// first is 16x16
+	let probe_stride = f32( cfg.probe_stride ) * pow(2., f32(4 - merge_cfg.iteration));
 
-	var cascade_uv = start_uv * vec2(0.25,1.) + vec2(0.25,0.) * f32(3 - merge_cfg.iteration);
+	// probe corner
+	var sum = sample_corner(
+		vec2<i32>(cascade_probe_pos),
+		i32(probe_stride),
+		corner_index,
+		i32(3 - merge_cfg.iteration),
+	);
 
-	cascade_uv.y += probe_pixel_uv_size.y * ( probe_stride / 4. ) * f32(corner_index);
-
-
-	for	(var i = 0; i < i32(segment_size); i++){
-
-		let offset = vec2(
-			probe_pixel_uv_size.x * ( f32(i) % probe_stride ) * 0.25,
-			probe_pixel_uv_size.y * ( f32(i) / probe_stride ),
-		);
-
-		sum += textureSample(cascades_tex,cascades_sampler, cascade_uv + offset);
-		count += 1;
-	}
-
-	sum = sum /f32(count);
-
-
-	if merge_cfg.iteration > 0 {
-		let last_merge = textureSample(last_merge_tex,last_merge_sampler,in.uv);
-		sum = ( sum + last_merge ) / 2.;
-	}
-
+	// if merge_cfg.iteration > 0 {
+	// 	let last_merge = textureSample(last_merge_tex, last_merge_sampler, in.uv);
+	// 	sum = mix(sum , last_merge,last_merge.a * 0.5);
+	// }
 	return sum;
 }
 
 
-fn test(uv: vec2<f32>){
-
-	// let target_pixel_pos = merge_cfg.target_size * uv;
-	// let last_cascade_pos = i32( target_pixel_pos ) / 4;
-	// let last_cascade_corner = i32(target_pixel_pos) % 4;
-	//
-	// let avarage_corner = probe_corner_avg(
-	// 	last_cascade_pos,
-	// 	last_cascade_corner,
-	// 	merge_cfg.iteration,
-	// );
-}
-
-
-// calculates the avrage color of a probe corner
-fn probe_corner_avg(
-	position: vec2<i32>,
-	corner: vec2<i32>,
-	iteration: u32,
-	size: vec2<f32>,
-) -> vec4<f32>{
-	var out : vec4<f32>;
-
-
-	// let probe_size = 8; // todo: Probe size of the last cascade
-	// let offset = corner_to_offset(corner, probe_size);
-
-	// let uv_position = position / probe_chunk_size;
-	//
-	// let corner_pixel_count = ( probe_size * probe_size ) / 4;
-	//
-	// for ( var i = 0; i < corner_pixel_count; i ++ ) {
-	//
-	// 	let pixel_position = offset + i;
-	//
-	// 	let uv_position =  pixel_position / probe_tex_size;
-	//
-	// }
-
-	return out;
-}
-
-
-fn offset_to_corner(offset: u32) -> vec2<f32>{
-	var corner : vec2<f32>;
-	return corner;
-}
-
-fn corner_to_offset(corner: vec2<f32>, probe_size: u32) -> i32{
-	return i32(corner.x);
-}
-
-// order is const, offset changes
-// x y coord of prev cascade + which corner
-// represent corner by offset
-// order: TOPRIGHT->TOPLEFT->BOTTOMLEFT->BOTTOMRIGHT
-// offset step = pixel/4
-fn sum_corner(
-	x: u32,
-	y: u32,
+fn sample_corner(
+	probe_coord: vec2<i32>,
+	probe_stride: i32,
 	corner_index: i32,
-	size: i32,
+	cascade_index: i32,
 ) -> vec4<f32>{
-	var out : vec4<f32>;
-	let corner_offset_step = f32(size * size / 4);
-	let offset = corner_offset_step * f32(corner_index);
-	return out;
-}
+	var sum : vec4<f32>;
+	var count = 0;
 
-// which corner am i
+	let xoffset = i32(textureDimensions(cascades_tex).x)/4 * cascade_index;
+	let size = vec2<i32>(textureDimensions(cascades_tex));
+
+	let yoffset =  corner_index * (probe_stride/4);
+	let corner_size = ( probe_stride * probe_stride )/4;
+
+	for (var i=0; i < corner_size; i ++){
+
+		let x = (i%probe_stride) + xoffset;
+		let y = (i/probe_stride) + yoffset;
+
+		let probe_start = probe_coord * probe_stride;
+		let sample_coord = probe_start + vec2(x,y);
+
+		if sample_coord.x < 0 || sample_coord.y < 0 || sample_coord.y > size.y || sample_coord.x > size.x {
+			continue;
+		}
+
+		let sample = textureLoad(cascades_tex,sample_coord,0);
+
+		if sample.a > 0. {
+			sum += sample;
+			count += 1;
+		}
+	}
+
+	return sum/f32(count);
+}

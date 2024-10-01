@@ -4,19 +4,21 @@ const PI:f32  = 3.14159;
 const TAU:f32 = PI *2.;
 
 struct GiConfig{
-	sample_count: u32,
 	probe_size: f32,
 	scale: f32,
 	flags: u32,
+
 	cascade_count: u32,
+	probe_stride: u32,
 }
 
 
 struct ComputedSize{
 	native: vec2<f32>,
 	scaled: vec2<f32>,
+	//this can be calculated from
+	// cascade count
 	probe: vec2<f32>,
-	factor: f32,
 }
 
 fn debug_voronoi(cfg: GiConfig) -> f32{
