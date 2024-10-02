@@ -87,7 +87,7 @@ fn sample_corner(
 	let size = vec2<i32>(textureDimensions(cascades_tex));
 
 
-	let yoffset =  corner_index * probe_stride/2;
+	let yoffset =  corner_index * probe_stride/4;
 	let corner_size = probe_stride * probe_stride/2;
 
 	for (var i=0; i < corner_size; i ++){
@@ -107,8 +107,9 @@ fn sample_corner(
 
 		if sample.a > 0. {
 			sum += sample;
-			count += 1;
 		}
+
+		count += 1;
 	}
 
 	return sum/f32(count);

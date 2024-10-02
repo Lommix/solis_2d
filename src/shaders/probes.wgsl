@@ -27,32 +27,34 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	let probe_stride		= f32(cfg.probe_stride) * pow(2., (cascade_index));
 	let probe_coord			= floor(cascade_frag_coord / probe_stride);
-	let ray_coord			= floor(cascade_frag_coord % probe_stride);
+	let ray_coord			= cascade_frag_coord % probe_stride;
 
 	let ray_index			= ray_coord.x + ray_coord.y * probe_stride;
 	let ray_count			= probe_stride * probe_stride;
-	let angle				= ray_index/ray_count * -TAU;
+	// let angle				= ray_index/ray_count * PI * 2.;
 
+    var angle = (f32(ray_index) + 0.5) / f32(ray_count) * -TAU;
 	// center frag coord of the probe
 	let cascade_center_frag = cascade_frag_coord + vec2(probe_stride) * 0.5;
-	let direction			= vec2(cos(angle),sin(angle));
+	// let direction = vec2(cos(angle),sin(angle));
+    let direction = normalize(vec2<f32>(cos(angle), sin(angle)));
+	// let direction = normalize(cascade_center_frag - cascade_frag_coord);
 
-
-	let ray_length = probe_stride*probe_stride * pow(4., cascade_index+1);
-	let ray_offset = probe_stride*probe_stride * pow(4., cascade_index);
+	let ray_length = cfg.probe_size * probe_stride * pow(4., ( cascade_index+1 ) * 2);
+	let ray_offset = cfg.probe_size * probe_stride * pow(2., cascade_index * 2);
 
 	let result = raymarch(
-		cascade_center_frag,
+		cascade_center_frag + direction * ray_offset,
 		direction,
-		ray_length * cfg.probe_size,
+		ray_length,
 		sdf_tex,
 		sdf_sampler,
-		20,
+		50,
 	);
 
 
 	out = select(out, result.last_sample, result.success == 1);
-	out.a = 1. ; //f32(result.success);
+	out.a = f32(result.success) * sign((result.last_sample.r + result.last_sample.g + result.last_sample.b)/3. );
 
 	// out.r = ((ray_coord)/vec2<f32>(size.scaled)).x;
 	// out.g = ((ray_coord)/vec2<f32>(size.scaled)).y;
