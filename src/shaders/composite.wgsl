@@ -42,9 +42,12 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	// super simple ultra fast merge
 	// let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
 
-	let s = textureSample(light_tex,probe_sampler,in.uv);
-	// let s = sampleRadianceField(light_tex,1.,in.uv);
-	out = mix(main_sample,s, min(sdf_sample.a,0.));
+	// let s = textureSample(light_tex,probe_sampler,in.uv);
+	var s = sampleRadianceField(light_tex,8.,in.uv);
+	let light_color = clamp(vec4(s.rgb,0.),vec4(0.), vec4(1.));
+	let intensity = (s.r + s.g + s.b)/3.;
+	out = main_sample + light_color * clamp(1+ abs(sdf_sample.a*0.1),0.,1.);
+	// out = select(out, out+light_color, sdf_sample.a < 0.);
 
 	// debug view
 	out = mix(out, vec4(abs(sdf_sample.a/100.)), debug_sdf(cfg));
@@ -55,24 +58,22 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	out = mix(out, merge_sample, debug_merge(cfg));
 	// ----------
 
-
 	return out;
 }
 
 
-fn sampleRadianceField(radianceField: texture_2d<f32>, distance : f32, uv: vec2<f32>) -> vec4<f32> {
-
-
+fn sampleRadianceField(radianceField: texture_2d<f32>, distance: f32, uv: vec2<f32>) -> vec4<f32> {
     // Get the size of the texture
     let size = vec2<f32>(textureDimensions(radianceField));
-    // Calculate the texel coordinates
+
+    // Calculate the texel coordinates with proper scaling
     let texelCoords = floor(uv * size);
 
     // Get the integer part (top-left corner of the texel's 2x2 block)
     let i0 = texelCoords;
-    let i1 = texelCoords + vec2<f32>(1.0, 0.0)*distance;
-    let i2 = texelCoords + vec2<f32>(0.0, 1.0)*distance;
-    let i3 = texelCoords + vec2<f32>(1.0, 1.0)*distance;
+    let i1 = texelCoords + vec2<f32>(1.0, 0.0) * distance;
+    let i2 = texelCoords + vec2<f32>(0.0, 1.0) * distance;
+    let i3 = texelCoords + vec2<f32>(1.0, 1.0) * distance;
 
     // Sample the texture at each of the texel positions
     let sample0 = textureLoad(radianceField, vec2<i32>(i0), 0);

@@ -34,8 +34,8 @@ impl Default for GiConfig {
     fn default() -> Self {
         Self {
             ray_range: 0.8,
-            scale_factor: 2,
-            flags: GiFlags::DEBUG_PROBE,
+            scale_factor: 1,
+            flags: GiFlags::DEFAULT,
             cascade_count: 4,
             probe_stride: 2,
         }

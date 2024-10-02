@@ -1,6 +1,5 @@
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
-    ecs::system::EntityCommands,
     input::mouse::MouseWheel,
     prelude::*,
     render::texture::ImageSamplerDescriptor,
@@ -82,7 +81,6 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
             ));
         }
     }
-
     cmd.spawn((SpriteBundle {
         sprite: Sprite {
             custom_size: Some(Vec2::splat(2000.)),
@@ -121,42 +119,42 @@ fn debug_targets(mut cmd: Commands, render_targets: Res<RenderTargets>) {
     .with_children(|cmd| {
         let node = NodeBundle::default();
         cmd.spawn(node).with_children(|cmd| {
-            cmd.preview(render_targets.sdf_target.clone(), 200., 200.);
-            cmd.preview(render_targets.probe_target.clone(), 800., 200.);
+            cmd.preview(render_targets.sdf_target.clone(), "SDF", 200., 200.);
+            cmd.preview(render_targets.probe_target.clone(), "CASCADES", 800., 200.);
         });
 
         let mut node = NodeBundle::default();
+        node.style.width = Val::Px(200.);
         node.style.flex_direction = FlexDirection::Column;
         cmd.spawn(node).with_children(|cmd| {
             for m in render_targets.merge_targets.iter() {
-                cmd.preview(m.img.clone(), 300., 300.);
+                cmd.preview(m.img.clone(), "merge", 200., 200.);
             }
         });
     });
 }
 
 fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
-    egui::Window::new("Gi Config").show(egui.ctx_mut(), |ui| {
-        ui.label("probe stride");
-        ui.add(egui::Slider::new(&mut gi_config.probe_stride, (2)..=16));
+    egui::Window::new("Gi Config")
+        .anchor(egui::Align2::RIGHT_TOP, [0., 0.])
+        .show(egui.ctx_mut(), |ui| {
+            ui.label("probe stride");
+            ui.add(egui::Slider::new(&mut gi_config.probe_stride, (2)..=16));
 
-        ui.label("cascade count");
-        ui.add(egui::Slider::new(&mut gi_config.cascade_count, (1)..=8));
+            ui.label("cascade count");
+            ui.add(egui::Slider::new(&mut gi_config.cascade_count, (1)..=8));
 
-        ui.label("ray range");
-        ui.add(egui::Slider::new(&mut gi_config.ray_range, (0.)..=1.));
-        ui.label("scale");
-        ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1)..=10));
+            ui.label("ray range");
+            ui.add(egui::Slider::new(&mut gi_config.ray_range, (0.)..=1.));
+            ui.label("scale");
+            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1)..=10));
 
-        flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
-        flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_config, "VORONOI");
-        flag_checkbox(GiFlags::DEBUG_LIGHT, ui, &mut gi_config, "LIGHT");
-        flag_checkbox(GiFlags::DEBUG_BOUNCE, ui, &mut gi_config, "BOUNCE");
-        flag_checkbox(GiFlags::DEBUG_PROBE, ui, &mut gi_config, "PROBE");
-        flag_checkbox(GiFlags::DEBUG_MERGE, ui, &mut gi_config, "MERGE");
-        // ui.image("file://assets/box.png");
-        // ui.separator();
-    });
+            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
+            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_config, "VORONOI");
+            flag_checkbox(GiFlags::DEBUG_LIGHT, ui, &mut gi_config, "LIGHT");
+            flag_checkbox(GiFlags::DEBUG_PROBE, ui, &mut gi_config, "PROBE");
+            flag_checkbox(GiFlags::DEBUG_MERGE, ui, &mut gi_config, "MERGE");
+        });
 }
 
 fn on_change(mut cmd: Commands, config: Res<GiConfig>, mut local: Local<GiConfig>) {
@@ -324,22 +322,46 @@ fn move_light(
 }
 
 trait Preview {
-    fn preview(&mut self, handle: Handle<Image>, width: f32, height: f32) -> EntityCommands;
+    fn preview(&mut self, handle: Handle<Image>, title: &str, width: f32, height: f32);
 }
 
 impl Preview for ChildBuilder<'_> {
-    fn preview(&mut self, handle: Handle<Image>, width: f32, height: f32) -> EntityCommands<'_> {
-        self.spawn(ImageBundle {
-            image: UiImage {
-                texture: handle,
+    fn preview(&mut self, handle: Handle<Image>, title: &str, width: f32, height: f32) {
+        let mut node = NodeBundle::default();
+        node.border_color = BorderColor(Color::WHITE);
+        node.style.width = Val::Auto;
+        node.border_radius = BorderRadius::all(Val::Px(10.));
+        node.style.border = UiRect::all(Val::Px(2.));
+        node.background_color = BackgroundColor(Color::BLACK);
+        self.spawn(node).with_children(|cmd| {
+            cmd.spawn(ImageBundle {
+                image: UiImage {
+                    texture: handle,
+                    ..default()
+                },
+                style: Style {
+                    width: Val::Px(width),
+                    height: Val::Px(height),
+                    ..default()
+                },
                 ..default()
-            },
-            style: Style {
-                width: Val::Px(width),
-                height: Val::Px(height),
-                ..default()
-            },
-            ..default()
-        })
+            });
+
+            let mut text = TextBundle::default();
+            text.style.position_type = PositionType::Absolute;
+            text.style.bottom = Val::Percent(2.);
+            text.style.left = Val::Px(2.);
+            text.style.justify_self = JustifySelf::Center;
+            text.text.sections = vec![TextSection::new(
+                title,
+                TextStyle {
+                    font_size: 16.,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            )];
+
+            cmd.spawn(text);
+        });
     }
 }

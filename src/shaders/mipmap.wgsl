@@ -11,33 +11,21 @@
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	var out : vec4<f32>;
-	out = sampleRadianceField(source_tex, source_sampler, in.uv);
-	return out;
-}
+	var count = 0;
 
-fn sampleRadianceField(radianceField: texture_2d<f32>, s: sampler, uv: vec2<f32>) -> vec4<f32> {
-    // Get the size of the texture
-    let size = vec2<f32>(textureDimensions(radianceField));
-    // Calculate the texel coordinates
-    let texelCoords = uv * size;
 
-    // Get the integer part (top-left corner of the texel's 2x2 block)
-    let i0 = floor(texelCoords);
-    let i1 = i0 + vec2<f32>(1.0, 0.0);
-    let i2 = i0 + vec2<f32>(0.0, 1.0);
-    let i3 = i0 + vec2<f32>(1.0, 1.0);
+    let size = vec2<f32>(textureDimensions(source_tex));
+	let frag = vec2<i32>(size * in.uv);
+	var offsets = array<vec2<i32>,4>(
+		vec2(0,0),
+		vec2(1,0),
+		vec2(0,1),
+		vec2(1,1),
+	);
 
-	var sum : vec4<f32>;
+	for (var i = 0; i < 4; i ++){
+		out += textureLoad(source_tex, frag + offsets[i],0);
+	}
 
-    let s0 = textureSample(radianceField, s, i0 / size);
-	let s1 = textureSample(radianceField, s, i1 / size);
-    let s2 = textureSample(radianceField, s, i2 / size);
-    let s3 = textureSample(radianceField, s, i3 / size);
-
-	sum = select(sum, sum + s0, s0.a > 0.01);
-	sum = select(sum, sum + s1, s1.a > 0.01);
-	sum = select(sum, sum + s2, s2.a > 0.01);
-	sum = select(sum, sum + s3, s3.a > 0.01);
-
-    return sum/4.;
+	return out / 4.;
 }

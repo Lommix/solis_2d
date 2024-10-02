@@ -1,4 +1,4 @@
-#![allow(unused)]
+// #![allow(unused)]
 
 use bevy::{
     asset::{embedded_asset, load_internal_asset},
@@ -17,12 +17,10 @@ use bevy::{
 use size::ComputedSizeBuffer;
 use std::{path::PathBuf, time::Duration};
 
-mod bounce;
 mod common;
 mod composite;
 mod config;
 mod constant;
-mod light;
 mod merge;
 mod mipmap;
 mod node;
@@ -34,7 +32,6 @@ mod targets;
 pub mod prelude {
     pub use super::common::Light2dCameraTag;
     pub use super::config::{GiConfig, GiFlags};
-    pub use super::light::PointLight2d;
     pub use super::sdf::{Emitter, Occluder, SdfShape};
     pub use super::size::{ComputedSize, ResizeEvent};
     pub use super::targets::RenderTargets;
@@ -45,9 +42,6 @@ pub mod prelude {
 pub struct LightPlugin {
     settings: config::GiConfig,
 }
-
-#[derive(Resource)]
-struct AssetHolder(Vec<Handle<Shader>>);
 
 impl Plugin for LightPlugin {
     fn build(&self, app: &mut App) {
@@ -94,8 +88,6 @@ impl Plugin for LightPlugin {
         //embedd
         embedded_asset!(app, "shaders/merge.wgsl");
         embedded_asset!(app, "shaders/probes.wgsl");
-        embedded_asset!(app, "shaders/light.wgsl");
-        embedded_asset!(app, "shaders/bounce.wgsl");
         embedded_asset!(app, "shaders/sdf.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
         embedded_asset!(app, "shaders/mipmap.wgsl");
@@ -107,20 +99,12 @@ impl Plugin for LightPlugin {
 
         render_app
             .insert_resource(self.settings.clone())
-            .add_systems(
-                ExtractSchedule,
-                (
-                    sdf::extract_occluder,
-                    light::extract_lights,
-                    size::extract_size,
-                ),
-            )
+            .add_systems(ExtractSchedule, (sdf::extract_occluder, size::extract_size))
             .add_systems(
                 Render,
                 (
                     sdf::prepare_sdf_buffers,
                     size::prepare_bindgroup,
-                    light::prepare_light_buffers,
                     config::prepare,        // todo: run on change
                     merge::prepare_uniform, // todo:run on change
                 )
@@ -138,9 +122,6 @@ impl Plugin for LightPlugin {
         render_app
             .init_resource::<sdf::SdfPipeline>()
             .init_resource::<sdf::SdfBuffers>()
-            .init_resource::<light::LightPipeline>()
-            .init_resource::<light::LightBuffers>()
-            .init_resource::<bounce::BouncePipeline>()
             .init_resource::<ComputedSizeBuffer>()
             .init_resource::<composite::CompositePipeline>()
             .init_resource::<config::ConfigBuffer>()

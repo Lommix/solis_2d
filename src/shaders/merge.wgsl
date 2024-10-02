@@ -104,12 +104,9 @@ fn sample_corner(
 		}
 
 		let sample = textureLoad(cascades_tex,sample_coord,0);
-
-		if sample.a > 0. {
-			sum += sample;
-		}
-
 		count += 1;
+		sum += sample;
+
 	}
 
 	return sum/f32(count);

@@ -1,9 +1,7 @@
 use crate::{
-    bounce::BouncePipeline,
     common::Light2dCameraTag,
     composite::CompositePipeline,
     config::ConfigBuffer,
-    light::{LightBuffers, LightPipeline},
     merge::{MergePipeline, MergeUniforms},
     mipmap::MipMapPipeline,
     probe::ProbePipeline,
@@ -51,15 +49,12 @@ impl render_graph::ViewNode for LightNode {
         // -------------------------------------------
         let gpu_images = world.resource::<RenderAssets<GpuImage>>();
         let sdf_pipeline = world.resource::<SdfPipeline>();
-        let light_pipeline = world.resource::<LightPipeline>();
-        let light_buffers = world.resource::<LightBuffers>();
         let composite_pipeline = world.resource::<CompositePipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let sdf_buffers = world.resource::<SdfBuffers>();
         let post_process = view_target.post_process_write();
         let size_buffer = world.resource::<ComputedSizeBuffer>();
         let config_buffer = world.resource::<ConfigBuffer>();
-        let bounce_pipeline = world.resource::<BouncePipeline>();
         let probe_pipeline = world.resource::<ProbePipeline>();
         let merge_pipeline = world.resource::<MergePipeline>();
         let merge_unifrom = world.resource::<MergeUniforms>();
@@ -287,7 +282,7 @@ impl render_graph::ViewNode for LightNode {
                 post_process.source,
                 &sdf_target.sampler, //@todo: fix this
                 &mipmap_target.texture_view,
-                &light_pipeline.rad_sampler,
+                &mipmap_target.sampler,
                 &sdf_target.texture_view,
                 &sdf_target.sampler,
                 &bounce_target.texture_view,
@@ -295,9 +290,8 @@ impl render_graph::ViewNode for LightNode {
                 &probe_target.texture_view,
                 &probe_target.sampler,
                 &merge_targets.last().unwrap().texture_view,
-                // &merge_targets.last().unwrap().sampler,
+                &merge_targets.last().unwrap().sampler,
                 // merge filter
-                &light_pipeline.sampler,
                 config_binding,
                 size_binding,
             )),

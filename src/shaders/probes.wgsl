@@ -44,7 +44,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let ray_offset = cfg.probe_size * probe_stride * pow(2., cascade_index * 2);
 
 	let result = raymarch(
-		cascade_center_frag + direction * ray_offset,
+		cascade_center_frag,// + direction * ray_offset,
 		direction,
 		ray_length,
 		sdf_tex,
@@ -55,6 +55,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	out = select(out, result.last_sample, result.success == 1);
 	out.a = f32(result.success) * sign((result.last_sample.r + result.last_sample.g + result.last_sample.b)/3. );
+	// out.a = 1.;
 
 	// out.r = ((ray_coord)/vec2<f32>(size.scaled)).x;
 	// out.g = ((ray_coord)/vec2<f32>(size.scaled)).y;
