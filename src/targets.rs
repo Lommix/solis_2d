@@ -91,18 +91,6 @@ impl RenderTargets {
                 size.scaled.y/probe_stride,
             );
 
-            // if i >  0 {
-            //     merge_size = merge_targets.last().unwrap().size.as_ivec2() * 2;
-            // }
-
-            // if size.scaled.x % probe_stride > 0 {
-            //     merge_size.x += probe_stride - size.scaled.x%probe_stride;
-            // }
-            //
-            // if size.scaled.y % probe_stride > 0 {
-            //     merge_size.y += probe_stride - size.scaled.y%probe_stride;
-            // }
-
             // info!("[{i}] -- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
 
             images.insert(

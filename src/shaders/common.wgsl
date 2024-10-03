@@ -2,6 +2,7 @@
 
 const PI:f32  = 3.14159;
 const TAU:f32 = PI *2.;
+const EPSILON: f32 = 4.88e-04;
 
 struct GiConfig{
 	probe_size: f32,

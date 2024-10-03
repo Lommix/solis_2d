@@ -285,6 +285,13 @@ fn move_camera(mut camera: Query<&mut Transform, With<Camera>>, inputs: Res<Butt
             as f32,
         0.,
     ) * 2.;
+
+    if inputs.just_pressed(KeyCode::KeyI) {
+        transform.scale += Vec3::splat(0.05);
+    }
+    if inputs.just_pressed(KeyCode::KeyU) {
+        transform.scale -= Vec3::splat(0.05);
+    }
 }
 
 fn move_light(

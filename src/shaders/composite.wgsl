@@ -43,7 +43,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	// let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
 
 	// let s = textureSample(light_tex,probe_sampler,in.uv);
-	var s = sampleRadianceField(light_tex,8.,in.uv);
+	var s = sampleRadianceField(light_tex,1.,in.uv);
 	let light_color = clamp(vec4(s.rgb,0.),vec4(0.), vec4(1.));
 	let intensity = (s.r + s.g + s.b)/3.;
 	out = main_sample + light_color * clamp(1+ abs(sdf_sample.a*0.1),0.,1.);

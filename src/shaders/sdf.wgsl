@@ -37,8 +37,16 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	var dist = 1e+10;
 	var emit : vec3<f32>;
+	let scale = 1.;
 
-	let world_position = view.world_position.xy + ( in.uv - 0.5 ) * vec2<f32>(computed_size.native) * 0.923  * vec2(1.,-1.);
+	let size = vec2<f32>(computed_size.native);
+	let frag_pos = vec2(size.x * in.uv.x,  size.y - size.y * in.uv.y);
+	let ndc_pos = vec4<f32>((frag_pos.x / size.x) * 2.0 - 1.0,
+                            (frag_pos.y / size.y) * 2.0 - 1.0,
+                            0.0,
+                            1.0);
+
+	let world_position = (view.world_from_clip * ndc_pos ).xy;
 
 	for(var i = 0; i < i32(circle_occluder_buffer.count); i ++ ){
 		let circle = circle_occluder_buffer.data[i];
@@ -62,10 +70,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		dist = min(dist, world_dist);
 	}
 
-	// scale
-	// 1px sdf = multiple native
-	let factor = f32(computed_size.native.x/computed_size.scaled.x);
-	return vec4(emit, dist/factor);
+	return vec4(emit, dist);
 }
 
 fn world_circle(
@@ -93,22 +98,4 @@ fn world_rect(
     let outside = length(max(edge_distance, vec2(0.)));
     let inside = min(max(edge_distance.x, edge_distance.y), 0.);
     return outside + inside;
-}
-
-
-fn world_to_ndc(world_position: vec2<f32>, view_projection: mat4x4<f32>) -> vec2<f32> {
-    return (view_projection * vec4<f32>(world_position, 0.0, 1.0)).xy;
-}
-
-fn ndc_to_screen(ndc: vec2<f32>, screen_size: vec2<f32>) -> vec2<f32> {
-    let screen_position: vec2<f32> = (ndc + 1.0) * 0.5 * screen_size;
-    return vec2(screen_position.x, (screen_size.y - screen_position.y));
-}
-
-fn world_to_screen(
-    world_position: vec2<f32>,
-    screen_size: vec2<f32>,
-    view_projection: mat4x4<f32>
-) -> vec2<f32> {
-    return ndc_to_screen(world_to_ndc(world_position, view_projection), screen_size);
 }

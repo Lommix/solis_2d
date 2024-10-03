@@ -29,7 +29,15 @@ impl ComputedSize {
     ) -> Self {
         let width = window.physical_width();
         let height = window.physical_height();
-        let size = IVec2::new(width as i32, height as i32);
+        let mut size = IVec2::new(width as i32, height as i32);
+
+        if size.x%2 != 0 {
+            size.x += 1;
+        }
+
+        if size.y%2 != 0 {
+            size.y += 1;
+        }
 
         let mut downscaled_size = size/scale;//+ (scale - size%scale);
         if size.x%scale  > 0 {

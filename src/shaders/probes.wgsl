@@ -1,6 +1,6 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_render::view::View
-#import lommix_light::common::{ GiConfig, ComputedSize, random, PI, TAU }
+#import lommix_light::common::{ GiConfig,debug_probe, ComputedSize, random, PI, TAU,EPSILON }
 #import lommix_light::raymarch::{raymarch_probe}
 
 
@@ -25,97 +25,89 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let cascade_index		= floor(in.uv.x * 4.);
 	let cascade_frag_coord	= vec2(frag_coord.x % f32(size.scaled.x),frag_coord.y);
 
-	let probe_stride		= f32(cfg.probe_stride) * pow(2., (cascade_index));
+	let probe_stride		= f32(cfg.probe_stride) * pow(2., cascade_index);
 	let probe_coord			= floor(cascade_frag_coord / probe_stride);
 	let ray_coord			= cascade_frag_coord % probe_stride;
 
 	let ray_index			= ray_coord.x + ray_coord.y * probe_stride;
 	let ray_count			= probe_stride * probe_stride;
-	// let angle				= ray_index/ray_count * PI * 2.;
 
-    var angle = (f32(ray_index) + 0.5) / f32(ray_count) * -TAU;
-	// center frag coord of the probe
-	let cascade_center_frag = cascade_frag_coord + vec2(probe_stride) * 0.5;
-	// let direction = vec2(cos(angle),sin(angle));
-    let direction = normalize(vec2<f32>(cos(angle), sin(angle)));
-	// let direction = normalize(cascade_center_frag - cascade_frag_coord);
+    var angle				= (f32(ray_index) + 0.5) / f32(ray_count) * -TAU;
+	let cascade_center_frag = cascade_frag_coord + probe_stride/2;
+    let direction			= normalize(vec2<f32>(cos(angle), sin(angle)));
 
-	let ray_length = cfg.probe_size * probe_stride * pow(4., ( cascade_index+1 ) * 2);
-	let ray_offset = cfg.probe_size * probe_stride * pow(2., cascade_index * 2);
+	let ray_length	= cfg.probe_size * probe_stride * pow(2., ( cascade_index + 1 )*2); //* (1. - pow(4., cascade_index+1))/ - 3.0;
+	let ray_offset	= cfg.probe_size * probe_stride * pow(2., ( cascade_index )*2); //* pow(4., cascade_index+1);
 
-	let result = raymarch(
-		cascade_center_frag,// + direction * ray_offset,
+
+	let probe_uv = ray_coord / vec2(probe_stride);
+
+	out = ray_march(
+		cascade_center_frag,
 		direction,
 		ray_length,
-		sdf_tex,
-		sdf_sampler,
-		50,
+		ray_offset,
 	);
 
+	if debug_probe(cfg) > 0.{
+		out.r += probe_uv.r * .2;
+		out.g += probe_uv.g * .2;
+	}
 
-	out = select(out, result.last_sample, result.success == 1);
-	out.a = f32(result.success) * sign((result.last_sample.r + result.last_sample.g + result.last_sample.b)/3. );
-	// out.a = 1.;
-
-	// out.r = ((ray_coord)/vec2<f32>(size.scaled)).x;
-	// out.g = ((ray_coord)/vec2<f32>(size.scaled)).y;
 	return out;
 }
 
 
-struct RayResult{
-	success: i32,
-	steps: i32,
-	current_pos: vec2<f32>,
-	last_sample: vec4<f32>,
-}
-
-fn raymarch(
+fn ray_march(
 	origin: vec2<f32>,
 	direction: vec2<f32>,
-	max_dist: f32,
-	sdf_tex: texture_2d<f32>,
-	sdf_sampler: sampler,
-	max_steps: i32,
-) -> RayResult
-{
+	range : f32,
+	offset: f32,
+) -> vec4<f32> {
+	var out : vec4<f32>;
+	var travel_dist = 0.;
+	var position = origin;
+    let dimensions = vec2<f32>(textureDimensions(sdf_tex));
 
-	let size = vec2<f32>(textureDimensions(sdf_tex));
+	// let coord = vec2<i32>(round(position));
+	// let sample = textureLoad(sdf_tex, coord, 0);
+	// let dist = sample.a;
+	// let intensity = (sample.r+sample.g+sample.b);
+	//
+	// let dcoord = coord + vec2<i32>(round(direction));
+	// let dsample = textureLoad(sdf_tex, dcoord,0);
 
-	var result: RayResult;
-	result.current_pos = origin;// + direction * sqrt(max_dist);
-	var travel = 0.;
+	// hit between origin and offset block light
+	// what if moving away from a light?
+	// if dist < offset && dsample.a < dist {
+	// 	return vec4(0.);
+	// }
 
-	for (var i = 0; i < max_steps; i ++ )
+	// position += direction * range;
+
+	for (var i = 0; i < 32; i ++ )
 	{
-		// out of bounds
-		if
-			result.current_pos.x > size.x || result.current_pos.y > size.y ||
-			result.current_pos.x < 0. || result.current_pos.y < 0.
-		{
-			break;
+        if (
+            travel_dist >= range ||
+            any(position >= dimensions) ||
+            any(position < vec2<f32>(0.0))
+        ) {
+            break;
+        }
+
+        let coord = vec2<u32>(round(position));
+        let sdf_sample = textureLoad(sdf_tex, coord, 0);
+		let dist = sdf_sample.a;
+
+        if (dist < EPSILON) {
+			let rgb = sdf_sample.rgb;
+			out = vec4(sdf_sample.rgb,1.);
+            break;
 		}
 
-		result.steps ++;
-		result.last_sample = textureLoad(sdf_tex, vec2<i32>(result.current_pos), 0);
-
-		let current_distance = result.last_sample.a;
-
-		// is hit?
-		if current_distance < 0.01 {
-			result.success = 1;
-			break;
-		}
-
-		let to_next = direction * current_distance;
-		travel += current_distance;
-
-		if travel > max_dist {
-			break;
-		}
-
-		result.current_pos = result.current_pos + to_next;
+		position += direction * dist;
+		travel_dist += dist;
 	}
 
-	return result;
+	return out;
 }
