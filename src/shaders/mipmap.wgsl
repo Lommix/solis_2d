@@ -13,7 +13,6 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	var out : vec4<f32>;
 	var count = 0;
 
-
     let size = vec2<f32>(textureDimensions(source_tex));
 	let frag = vec2<i32>(size * in.uv);
 	var offsets = array<vec2<i32>,4>(

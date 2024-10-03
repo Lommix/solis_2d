@@ -36,8 +36,8 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let cascade_center_frag = cascade_frag_coord + probe_stride/2;
     let direction			= normalize(vec2<f32>(cos(angle), sin(angle)));
 
-	let ray_length	= cfg.probe_size * probe_stride * pow(2., ( cascade_index + 1 )*2); //* (1. - pow(4., cascade_index+1))/ - 3.0;
-	let ray_offset	= cfg.probe_size * probe_stride * pow(2., ( cascade_index )*2); //* pow(4., cascade_index+1);
+	let ray_length	= ( probe_stride* 5.) * (1. - pow(4., cascade_index)/-3);
+	let ray_offset	= ( probe_stride* 5.) * pow(4., cascade_index);
 
 
 	let probe_uv = ray_coord / vec2(probe_stride);
@@ -69,22 +69,6 @@ fn ray_march(
 	var position = origin;
     let dimensions = vec2<f32>(textureDimensions(sdf_tex));
 
-	// let coord = vec2<i32>(round(position));
-	// let sample = textureLoad(sdf_tex, coord, 0);
-	// let dist = sample.a;
-	// let intensity = (sample.r+sample.g+sample.b);
-	//
-	// let dcoord = coord + vec2<i32>(round(direction));
-	// let dsample = textureLoad(sdf_tex, dcoord,0);
-
-	// hit between origin and offset block light
-	// what if moving away from a light?
-	// if dist < offset && dsample.a < dist {
-	// 	return vec4(0.);
-	// }
-
-	// position += direction * range;
-
 	for (var i = 0; i < 32; i ++ )
 	{
         if (
@@ -99,7 +83,7 @@ fn ray_march(
         let sdf_sample = textureLoad(sdf_tex, coord, 0);
 		let dist = sdf_sample.a;
 
-        if (dist < EPSILON) {
+        if dist < EPSILON {
 			let rgb = sdf_sample.rgb;
 			out = vec4(sdf_sample.rgb,1.);
             break;

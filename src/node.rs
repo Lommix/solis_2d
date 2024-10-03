@@ -120,11 +120,9 @@ impl render_graph::ViewNode for LightNode {
             return Ok(());
         };
 
-        let (Some(sdf_target), Some(probe_target), Some(light_target), Some(bounce_target)) = (
+        let (Some(sdf_target), Some(probe_target)) = (
             gpu_images.get(&render_targets.sdf_target),
             gpu_images.get(&render_targets.probe_target),
-            gpu_images.get(&render_targets.light_target),
-            gpu_images.get(&render_targets.bounce_target),
         ) else {
             warn!("failed to load targets");
             return Ok(());
@@ -285,8 +283,6 @@ impl render_graph::ViewNode for LightNode {
                 &mipmap_target.sampler,
                 &sdf_target.texture_view,
                 &sdf_target.sampler,
-                &bounce_target.texture_view,
-                &bounce_target.sampler,
                 &probe_target.texture_view,
                 &probe_target.sampler,
                 &merge_targets.last().unwrap().texture_view,

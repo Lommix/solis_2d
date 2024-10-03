@@ -10,17 +10,14 @@
 @group(0) @binding(4) var sdf_tex: texture_2d<f32>;
 @group(0) @binding(5) var sdf_sampler: sampler;
 
-@group(0) @binding(6) var bounce_tex: texture_2d<f32>;
-@group(0) @binding(7) var bounce_sampler: sampler;
+@group(0) @binding(6) var probe_tex: texture_2d<f32>;
+@group(0) @binding(7) var probe_sampler: sampler;
 
-@group(0) @binding(8) var probe_tex: texture_2d<f32>;
-@group(0) @binding(9) var probe_sampler: sampler;
+@group(0) @binding(8) var merge_tex: texture_2d<f32>;
+@group(0) @binding(9) var merge_sampler: sampler;
 
-@group(0) @binding(10) var merge_tex: texture_2d<f32>;
-@group(0) @binding(11) var merge_sampler: sampler;
-
-@group(0) @binding(12) var<uniform> cfg: GiConfig;
-@group(0) @binding(13) var<uniform> size: ComputedSize;
+@group(0) @binding(10) var<uniform> cfg: GiConfig;
+@group(0) @binding(11) var<uniform> size: ComputedSize;
 
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
@@ -30,7 +27,6 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let main_sample = textureSample(main_tex, main_sampler, in.uv);
 	let sdf_sample = textureSample(sdf_tex,sdf_sampler,in.uv);
 	let light_sample = textureSample(light_tex, light_sampler, in.uv);
-	let bounce_sample = textureSample(bounce_tex, bounce_sampler, in.uv);
 	let merge_sample = textureSample(merge_tex, merge_sampler, in.uv);
 
 
@@ -43,17 +39,20 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	// let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
 
 	// let s = textureSample(light_tex,probe_sampler,in.uv);
-	var s = sampleRadianceField(light_tex,1.,in.uv);
+
+	var s = textureSample(light_tex,light_sampler,in.uv);
 	let light_color = clamp(vec4(s.rgb,0.),vec4(0.), vec4(1.));
-	let intensity = (s.r + s.g + s.b)/3.;
-	out = main_sample + light_color * clamp(1+ abs(sdf_sample.a*0.1),0.,1.);
+	let intensity = (sdf_sample.r + sdf_sample.g + sdf_sample.b)/3.;
+
+	let not_inside = max(sign(sdf_sample.a),0.);
+
+	out = main_sample + s * 10.;
 	// out = select(out, out+light_color, sdf_sample.a < 0.);
 
 	// debug view
 	out = mix(out, vec4(abs(sdf_sample.a/100.)), debug_sdf(cfg));
 	out = mix(out, vec4(sdf_sample.rgb, 1.), debug_voronoi(cfg));
 	out = mix(out, s, debug_light(cfg));
-	out = mix(out, vec4(bounce_sample), debug_bounce(cfg));
 	out = mix(out, probe_0, debug_probe(cfg));
 	out = mix(out, merge_sample, debug_merge(cfg));
 	// ----------

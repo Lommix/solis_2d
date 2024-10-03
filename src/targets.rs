@@ -16,8 +16,8 @@ pub struct RenderTargets {
     pub sdf_target: Handle<Image>,
     pub probe_target: Handle<Image>,
     pub merge_targets: Vec<MergeTarget>,
-    pub light_target: Handle<Image>,
-    pub bounce_target: Handle<Image>,
+    // pub light_target: Handle<Image>,
+    // pub bounce_target: Handle<Image>,
     pub light_mipmap_target: Handle<Image>,
 }
 
@@ -26,8 +26,6 @@ impl RenderTargets {
     pub fn from_size(size: &ComputedSize, cfg: &GiConfig, images: &mut Assets<Image>) -> Self {
         let sdf_target          = Handle::weak_from_u128(905214787963254423236589025);
         let probe_target        = Handle::weak_from_u128(531037848998654123701989143);
-        let light_target        = Handle::weak_from_u128(432123084179531435312554421);
-        let bounce_target       = Handle::weak_from_u128(139987876583680013788430019);
         let light_mipmap_target = Handle::weak_from_u128(139987876583680013788430531);
 
         images.insert(
@@ -44,7 +42,7 @@ impl RenderTargets {
             create_image(
                 size.scaled.as_vec2()/2.,
                 constant::PROBE_FORMAT,
-                ImageSampler::nearest(),
+                ImageSampler::linear(),
             ),
         );
 
@@ -57,25 +55,6 @@ impl RenderTargets {
             ),
         );
 
-        images.insert(
-            &light_target,
-            create_image(
-                size.scaled.as_vec2()/2.,
-                constant::LIGHT_FORMAT,
-                ImageSampler::nearest(),
-            ),
-        );
-
-        images.insert(
-            &bounce_target,
-            create_image(
-                size.scaled.as_vec2(),
-                constant::BOUNCE_FORMAT,
-                ImageSampler::nearest(),
-            ),
-        );
-
-
         let mut merge_targets : Vec<MergeTarget> = Vec::new();
 
         for i in 0 .. (cfg.cascade_count) {
@@ -84,9 +63,9 @@ impl RenderTargets {
             // skip last one
             let index = cfg.cascade_count - i - 1;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            let mut probe_stride = (cfg.probe_stride as i32) * (2_i32).pow(index);
+            let probe_stride = (cfg.probe_stride as i32) * (2_i32).pow(index);
 
-            let mut merge_size = IVec2::new(
+            let merge_size = IVec2::new(
                 size.scaled.x/probe_stride,
                 size.scaled.y/probe_stride,
             );
@@ -110,9 +89,7 @@ impl RenderTargets {
         Self {
             sdf_target,
             probe_target,
-            light_target,
             merge_targets,
-            bounce_target,
             light_mipmap_target,
         }
     }

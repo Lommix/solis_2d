@@ -66,11 +66,39 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	);
 
 	if merge_cfg.iteration > 0 {
-		let last_merge = textureSample(last_merge_tex, last_merge_sampler, in.uv);
-		sum = mix(sum , last_merge, 0.5);
+		let last_merge = probe_last_merge(in.uv, corner_pos);
+		sum += last_merge * .55;
 	}
 
 	return sum;
+}
+
+
+fn probe_last_merge(
+	uv: vec2<f32>,
+	corner: vec2<f32>,
+) -> vec4<f32>{
+	let size = vec2<f32>(textureDimensions(last_merge_tex));
+
+	let coord = floor(size * uv) + corner;
+	var offsets = array<vec2<f32>,4>(
+		vec2(0.,0.),
+		vec2(0.,2.),
+		vec2(2.,0.),
+		vec2(2.,2.),
+	);
+	let s0 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[0] ),0);
+	let s1 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[1] ),0);
+	let s2 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[2] ),0);
+	let s3 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[3] ),0);
+
+
+    let weight = fract(size*uv);
+
+	let s01 = mix(s0,s1, weight.x);
+	let s23 = mix(s2,s3, weight.x);
+
+	return mix(s01,s23, weight.y);
 }
 
 
@@ -86,9 +114,8 @@ fn sample_corner(
 	let xoffset = i32(textureDimensions(cascades_tex).x)/4 * cascade_index;
 	let size = vec2<i32>(textureDimensions(cascades_tex));
 
-
 	let yoffset =  corner_index * probe_stride/4;
-	let corner_size = probe_stride * probe_stride/2;
+	let corner_size = probe_stride * probe_stride/4;
 
 	for (var i=0; i < corner_size; i ++){
 
