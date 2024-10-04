@@ -10,7 +10,7 @@ use bevy::{
 #[derive(Resource, ExtractResource, Clone, Copy, PartialEq)]
 pub struct GiConfig {
     /// base ray range
-    pub ray_range: f32,
+    pub interval: f32,
     /// downscale scale
     pub scale_factor: i32,
     /// debug flags
@@ -33,7 +33,7 @@ pub struct GpuConfig {
 impl Default for GiConfig {
     fn default() -> Self {
         Self {
-            ray_range: 0.8,
+            interval: 0.8,
             scale_factor: 1,
             flags: GiFlags::DEFAULT,
             cascade_count: 4,
@@ -52,7 +52,7 @@ pub fn prepare(
     config: Res<GiConfig>,
 ) {
     let cfg = buffer.get_mut();
-    cfg.probe_size = config.ray_range;
+    cfg.probe_size = config.interval;
     cfg.scale_factor = config.scale_factor;
     cfg.flags = config.flags.bits();
     cfg.cascade_count = config.cascade_count;

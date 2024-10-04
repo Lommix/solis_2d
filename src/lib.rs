@@ -91,6 +91,7 @@ impl Plugin for LightPlugin {
         embedded_asset!(app, "shaders/sdf.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
         embedded_asset!(app, "shaders/mipmap.wgsl");
+        embedded_asset!(app, "shaders/cascade.wgsl");
         // ---------------
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -127,7 +128,7 @@ impl Plugin for LightPlugin {
             .init_resource::<config::ConfigBuffer>()
             .init_resource::<probe::ProbePipeline>()
             .init_resource::<merge::MergePipeline>()
-            .init_resource::<merge::MergeUniforms>()
+            .init_resource::<merge::ProbeBuffer>()
             .init_resource::<mipmap::MipMapPipeline>();
     }
 }

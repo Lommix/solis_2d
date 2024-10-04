@@ -39,7 +39,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	var emit : vec3<f32>;
 	let scale = 1.;
 
-	let size = vec2<f32>(computed_size.native);
+	let size = vec2<f32>(computed_size.scaled);
 	let frag_pos = vec2(size.x * in.uv.x,  size.y - size.y * in.uv.y);
 	let ndc_pos = vec4<f32>((frag_pos.x / size.x) * 2.0 - 1.0,
                             (frag_pos.y / size.y) * 2.0 - 1.0,
@@ -70,7 +70,9 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		dist = min(dist, world_dist);
 	}
 
-	return vec4(emit, dist);
+	let factor = f32( computed_size.scaled.x ) / f32( computed_size.native.x );
+
+	return vec4(emit, dist * factor);
 }
 
 fn world_circle(

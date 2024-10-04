@@ -120,7 +120,6 @@ fn debug_targets(mut cmd: Commands, render_targets: Res<RenderTargets>) {
         let node = NodeBundle::default();
         cmd.spawn(node).with_children(|cmd| {
             cmd.preview(render_targets.sdf_target.clone(), "SDF", 200., 200.);
-            cmd.preview(render_targets.probe_target.clone(), "CASCADES", 800., 200.);
         });
 
         let mut node = NodeBundle::default();
@@ -144,8 +143,8 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
             ui.label("cascade count");
             ui.add(egui::Slider::new(&mut gi_config.cascade_count, (1)..=8));
 
-            ui.label("ray range");
-            ui.add(egui::Slider::new(&mut gi_config.ray_range, (0.)..=1.));
+            ui.label("interval");
+            ui.add(egui::Slider::new(&mut gi_config.interval, (0.)..=50.));
             ui.label("scale");
             ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1)..=10));
 

@@ -1,4 +1,4 @@
-use crate::{config::GiConfig, constant, merge::MergeUniform, prelude::ComputedSize};
+use crate::{config::GiConfig, constant, prelude::ComputedSize};
 use bevy::{
     prelude::*,
     render::{
@@ -40,7 +40,7 @@ impl RenderTargets {
         images.insert(
             &light_mipmap_target,
             create_image(
-                size.scaled.as_vec2()/2.,
+                size.scaled.as_vec2()/cfg.probe_stride as f32,
                 constant::PROBE_FORMAT,
                 ImageSampler::linear(),
             ),
@@ -57,31 +57,30 @@ impl RenderTargets {
 
         let mut merge_targets : Vec<MergeTarget> = Vec::new();
 
+        // ping pong later
         for i in 0 .. (cfg.cascade_count) {
             // in reverse order small to large
             // following the cascade order
             // skip last one
             let index = cfg.cascade_count - i - 1;
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            let probe_stride = (cfg.probe_stride as i32) * (2_i32).pow(index);
-
-            let merge_size = IVec2::new(
-                size.scaled.x/probe_stride,
-                size.scaled.y/probe_stride,
-            );
+            // let merge_size = IVec2::new(
+            //     size.scaled.x/probe_stride,
+            //     size.scaled.y/probe_stride,
+            // );
 
             // info!("[{i}] -- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
 
             images.insert(
                 &handle,
                 create_image(
-                    merge_size.as_vec2(),
+                    size.scaled.as_vec2(),
                     constant::MERGE_FORMAT,
                     ImageSampler::nearest(),
                 ),
             );
             merge_targets.push(MergeTarget {
-                size: merge_size.as_vec2(),
+                size: size.scaled.as_vec2(),
                 img: handle
             })
         }

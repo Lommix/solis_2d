@@ -34,7 +34,6 @@ struct MergeConfig {
 //				-----------------
 //
 //	counter clockwise rays
-//
 //  steps:
 //	- calc current index
 //	- sum avg line of last cadcade by index
@@ -91,7 +90,6 @@ fn probe_last_merge(
 	let s1 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[1] ),0);
 	let s2 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[2] ),0);
 	let s3 = textureLoad(last_merge_tex, vec2<i32>( coord + offsets[3] ),0);
-
 
     let weight = fract(size*uv);
 

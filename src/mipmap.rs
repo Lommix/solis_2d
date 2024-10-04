@@ -1,6 +1,7 @@
 use crate::{
     config::GpuConfig,
     constant::MERGE_FORMAT,
+    merge::Probe,
     prelude::{ComputedSize, GiConfig},
     targets::RenderTargets,
 };
@@ -37,8 +38,7 @@ impl FromWorld for MipMapPipeline {
                 ShaderStages::FRAGMENT,
                 (
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::NonFiltering),
-                    uniform_buffer::<ComputedSize>(true),
+                    uniform_buffer::<Probe>(true),
                 ),
             ),
         );

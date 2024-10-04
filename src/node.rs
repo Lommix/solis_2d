@@ -2,7 +2,7 @@ use crate::{
     common::Light2dCameraTag,
     composite::CompositePipeline,
     config::ConfigBuffer,
-    merge::{MergePipeline, MergeUniforms},
+    merge::{MergePipeline, ProbeBuffer},
     mipmap::MipMapPipeline,
     probe::ProbePipeline,
     sdf::{SdfBuffers, SdfPipeline},
@@ -57,7 +57,7 @@ impl render_graph::ViewNode for LightNode {
         let config_buffer = world.resource::<ConfigBuffer>();
         let probe_pipeline = world.resource::<ProbePipeline>();
         let merge_pipeline = world.resource::<MergePipeline>();
-        let merge_unifrom = world.resource::<MergeUniforms>();
+        let merge_unifrom = world.resource::<ProbeBuffer>();
         let mipmap_pipeline = world.resource::<MipMapPipeline>();
 
         let Some(render_targets) = world.get_resource::<RenderTargets>() else {
@@ -86,7 +86,15 @@ impl render_graph::ViewNode for LightNode {
             return Ok(());
         };
 
-        let Some(merge_render_pipeline) = pipeline_cache.get_render_pipeline(merge_pipeline.id)
+        let Some(no_merge_render_pipeline) =
+            pipeline_cache.get_render_pipeline(merge_pipeline.no_merge_id)
+        else {
+            // warn!("merge pipeline missing");
+            return Ok(());
+        };
+
+        let Some(merge_render_pipeline) =
+            pipeline_cache.get_render_pipeline(merge_pipeline.merge_id)
         else {
             // warn!("merge pipeline missing");
             return Ok(());
@@ -94,7 +102,7 @@ impl render_graph::ViewNode for LightNode {
 
         let Some(mipmap_render_pipeline) = pipeline_cache.get_render_pipeline(mipmap_pipeline.id)
         else {
-            warn!("mipmap pipeline missing");
+            // warn!("mipmap pipeline missing");
             return Ok(());
         };
 
@@ -171,34 +179,34 @@ impl render_graph::ViewNode for LightNode {
         // ---------------------------------------------------------------
         // probe
 
-        let probe_bind_group = render_context.render_device().create_bind_group(
-            Some("probe_bind_group".into()),
-            &probe_pipeline.layout,
-            &BindGroupEntries::sequential((
-                view_uniform_binding.clone(),
-                &sdf_target.texture_view,
-                &sdf_target.sampler,
-                size_binding.clone(),
-                config_binding.clone(),
-            )),
-        );
-        {
-            let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-                label: Some("probe_pass".into()),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &probe_target.texture_view,
-                    resolve_target: None,
-                    ops: Operations::default(),
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-
-            render_pass.set_render_pipeline(probe_render_pipeline);
-            render_pass.set_bind_group(0, &probe_bind_group, &[view_offset.offset]);
-            render_pass.draw(0..3, 0..1);
-        }
+        // let probe_bind_group = render_context.render_device().create_bind_group(
+        //     Some("probe_bind_group".into()),
+        //     &probe_pipeline.layout,
+        //     &BindGroupEntries::sequential((
+        //         view_uniform_binding.clone(),
+        //         &sdf_target.texture_view,
+        //         &sdf_target.sampler,
+        //         size_binding.clone(),
+        //         config_binding.clone(),
+        //     )),
+        // );
+        // {
+        //     let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
+        //         label: Some("probe_pass".into()),
+        //         color_attachments: &[Some(RenderPassColorAttachment {
+        //             view: &probe_target.texture_view,
+        //             resolve_target: None,
+        //             ops: Operations::default(),
+        //         })],
+        //         depth_stencil_attachment: None,
+        //         timestamp_writes: None,
+        //         occlusion_query_set: None,
+        //     });
+        //
+        //     render_pass.set_render_pipeline(probe_render_pipeline);
+        //     render_pass.set_bind_group(0, &probe_bind_group, &[view_offset.offset]);
+        //     render_pass.draw(0..3, 0..1);
+        // }
 
         // ---------------------------------------------------------------
         // merge probes
@@ -210,10 +218,8 @@ impl render_graph::ViewNode for LightNode {
                 Some("merge_bind_group".into()),
                 &merge_pipeline.layout,
                 &BindGroupEntries::sequential((
-                    &probe_target.texture_view,
-                    &probe_target.sampler,
+                    &sdf_target.texture_view,
                     &merge_targets[last_index].texture_view,
-                    &merge_targets[last_index].sampler,
                     size_binding.clone(),
                     config_binding.clone(),
                     merge_uniform_binding.clone(),
@@ -234,7 +240,12 @@ impl render_graph::ViewNode for LightNode {
 
             let offset = merge_unifrom.offsets[i];
 
-            render_pass.set_render_pipeline(merge_render_pipeline);
+            if i == 0 {
+                render_pass.set_render_pipeline(no_merge_render_pipeline);
+            } else {
+                render_pass.set_render_pipeline(merge_render_pipeline);
+            }
+
             render_pass.set_bind_group(0, &merge_bind_group, &[offset]);
             render_pass.draw(0..3, 0..1);
         }
@@ -248,8 +259,7 @@ impl render_graph::ViewNode for LightNode {
             &mipmap_pipeline.layout,
             &BindGroupEntries::sequential((
                 &merge_targets.last().unwrap().texture_view,
-                &merge_targets.last().unwrap().sampler,
-                size_binding.clone(),
+                merge_uniform_binding.clone(),
             )),
         );
         {
@@ -265,8 +275,9 @@ impl render_graph::ViewNode for LightNode {
                 occlusion_query_set: None,
             });
 
+            let offset = merge_unifrom.offsets.last().unwrap();
             render_pass.set_render_pipeline(mipmap_render_pipeline);
-            render_pass.set_bind_group(0, &mipmap_bind_group, &[0]);
+            render_pass.set_bind_group(0, &mipmap_bind_group, &[*offset]);
             render_pass.draw(0..3, 0..1);
         }
 

@@ -9,11 +9,7 @@ use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            binding_types::{sampler, texture_2d, uniform_buffer},
-            BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, DynamicUniformBuffer, FragmentState, MultisampleState, PipelineCache,
-            PrimitiveState, RenderPipelineDescriptor, SamplerBindingType, ShaderStages, ShaderType,
-            TextureSampleType,
+            binding_types::{sampler, texture_2d, uniform_buffer}, BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState, ColorWrites, DynamicUniformBuffer, FragmentState, MultisampleState, PipelineCache, PrimitiveState, RenderPipelineDescriptor, SamplerBindingType, ShaderDefVal, ShaderStages, ShaderType, TextureSampleType
         },
         renderer::{RenderDevice, RenderQueue},
         texture::GpuImage,
@@ -24,7 +20,8 @@ use bevy::{
 #[derive(Resource)]
 pub struct MergePipeline {
     pub layout: BindGroupLayout,
-    pub id: CachedRenderPipelineId,
+    pub no_merge_id: CachedRenderPipelineId,
+    pub merge_id: CachedRenderPipelineId,
 }
 
 impl FromWorld for MergePipeline {
@@ -35,21 +32,19 @@ impl FromWorld for MergePipeline {
             &BindGroupLayoutEntries::sequential(
                 ShaderStages::FRAGMENT,
                 (
-                    // probes
+                    // sdf
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::NonFiltering),
-                    // merge
+                    // prev cascade
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::NonFiltering),
                     uniform_buffer::<ComputedSize>(false),
                     uniform_buffer::<GpuConfig>(false),
-                    uniform_buffer::<MergeUniform>(true),
+                    uniform_buffer::<Probe>(true),
                 ),
             ),
         );
 
         let server = world.resource::<AssetServer>();
-        let shader = server.load("embedded://lommix_light/shaders/merge.wgsl");
+        let shader = server.load("embedded://lommix_light/shaders/cascade.wgsl");
 
         let id =
             world
@@ -63,7 +58,7 @@ impl FromWorld for MergePipeline {
                     depth_stencil: None,
                     multisample: MultisampleState::default(),
                     fragment: Some(FragmentState {
-                        shader,
+                        shader: shader.clone(),
                         shader_defs: vec![],
                         entry_point: "fragment".into(),
                         targets: vec![Some(ColorTargetState {
@@ -74,63 +69,75 @@ impl FromWorld for MergePipeline {
                     }),
                 });
 
-        Self { id, layout }
+        let merge_id =
+            world
+                .resource_mut::<PipelineCache>()
+                .queue_render_pipeline(RenderPipelineDescriptor {
+                    label: Some("merge_pipline".into()),
+                    layout: vec![layout.clone()],
+                    push_constant_ranges: vec![],
+                    vertex: fullscreen_shader_vertex_state(),
+                    primitive: PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: MultisampleState::default(),
+                    fragment: Some(FragmentState {
+                        shader,
+                        shader_defs: vec![ShaderDefVal::Bool("MERGE".into(), true)],
+                        entry_point: "fragment".into(),
+                        targets: vec![Some(ColorTargetState {
+                            format: MERGE_FORMAT,
+                            blend: None,
+                            write_mask: ColorWrites::ALL,
+                        })],
+                    }),
+                });
+
+        Self {
+            no_merge_id: id,
+            layout,
+            merge_id,
+        }
     }
 }
 
-#[derive(ShaderType)]
-pub struct MergeUniform {
-    pub iteration: u32,
-    pub target_size: Vec2,
+#[derive(ShaderType, Debug, Clone, Copy)]
+pub struct Probe {
+    pub width: u32,
+    /// Staring offset.
+    pub start: f32,
+    /// Range of ray.
+    pub range: f32,
 }
-
 #[derive(Resource, Default)]
-pub struct MergeUniforms {
-    pub buffer: DynamicUniformBuffer<MergeUniform>,
+pub struct ProbeBuffer {
+    pub buffer: DynamicUniformBuffer<Probe>,
     pub offsets: Vec<u32>,
 }
-
-//todo: should be loaded once + on change
-// impl FromWorld for MergeUniforms {
-//     fn from_world(world: &mut World) -> Self {
-//         let mut buffer = DynamicUniformBuffer::<MergeUniform>::default();
-//         let mut offsets = Vec::new();
-//
-//         let render_device = world.resource::<RenderDevice>();
-//         let render_queue = world.resource::<RenderQueue>();
-//         let gi_config = world.resource::<GiConfig>();
-//
-//         if let Some(mut writer) = buffer.get_writer(4, &render_device, &render_queue) {
-//             for i in 0..gi_config.cascade_count {
-//                 offsets.push(writer.write(&MergeUniform {
-//                     iteration: i,
-//                     target_size: Vec2::ZERO,
-//                 }));
-//             }
-//         }
-//
-//         MergeUniforms { buffer, offsets }
-//     }
-// }
 
 pub(crate) fn prepare_uniform(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    mut uniforms: ResMut<MergeUniforms>,
-    targets: Res<RenderTargets>,
+    gi_cfg: Res<GiConfig>,
+    mut uniforms: ResMut<ProbeBuffer>,
 ) {
     let mut offsets = Vec::new();
-    if let Some(mut writer) = uniforms.buffer.get_writer(4, &render_device, &render_queue) {
-        targets
-            .merge_targets
-            .iter()
-            .enumerate()
-            .for_each(|(i, target)| {
-                offsets.push(writer.write(&MergeUniform {
-                    iteration: i as u32,
-                    target_size: target.size,
-                }));
-            });
+    if let Some(mut writer) =
+        uniforms
+            .buffer
+            .get_writer(gi_cfg.cascade_count as usize, &render_device, &render_queue)
+    {
+        for c in 0..gi_cfg.cascade_count {
+            let i = gi_cfg.cascade_count - c;
+            let width = i as u32 * gi_cfg.probe_stride;
+            let start = gi_cfg.interval * (1.0 - f32::powi(4.0, i as i32)) / -3.0;
+            let range = gi_cfg.interval * f32::powi(4.0, i as i32);
+            let probe = Probe {
+                width,
+                start,
+                range,
+            };
+            offsets.push(writer.write(&probe));
+        }
     }
     uniforms.offsets = offsets;
 }
