@@ -27,7 +27,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	// super simple ultra fast merge
 	// let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
-	var s = textureSample(light_tex, linear_sampler,in.uv);
+	var s = sampleRadianceField(merge_tex_0, 1. ,in.uv);
 	let intensity = (sdf_sample.r + sdf_sample.g + sdf_sample.b)/3.;
 	let not_inside = sign(max(sdf_sample.a,0.));
 	out = main_sample + s * max(not_inside, sign(intensity));

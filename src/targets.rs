@@ -36,7 +36,7 @@ impl RenderTargets {
         images.insert(
             &light_mipmap_target,
             create_image(
-                size.scaled.as_vec2()/cfg.probe_stride as f32,
+                size.scaled.as_vec2()/( cfg.probe_stride as f32 * 4. ),
                 constant::MERGE_FORMAT,
                 ImageSampler::linear(),
             ),

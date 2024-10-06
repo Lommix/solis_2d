@@ -155,9 +155,9 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
             ui.label("cascade count");
             ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
             ui.label("interval");
-            ui.add(egui::Slider::new(&mut gi_config.interval, (1.)..=100.));
+            ui.add(egui::Slider::new(&mut gi_config.interval, (0.1)..=100.));
             ui.label("scale");
-            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1.)..=10.));
+            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
 
             flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
             flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_config, "VORONOI");
