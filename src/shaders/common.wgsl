@@ -1,8 +1,15 @@
 #define_import_path lommix_light::common
 
 const PI:f32  = 3.14159;
-const TAU:f32 = PI *2.;
+const TAU:f32 = PI * 2.;
 const EPSILON: f32 = 4.88e-04;
+
+struct Probe {
+    cascade_count: u32,
+    cascade_index: u32,
+    cascade_interval: f32,
+    base: u32,
+}
 
 struct GiConfig{
 	probe_size: f32,
@@ -35,11 +42,11 @@ fn debug_bounce(cfg: GiConfig) -> f32{
 	return select(0.,1., ( cfg.flags & 0x8 )!= 0);
 }
 
-fn debug_probe(cfg: GiConfig) -> f32{
+fn debug_merge0(cfg: GiConfig) -> f32{
 	return select(0.,1., ( cfg.flags & 0x10 )!= 0);
 }
 
-fn debug_merge(cfg: GiConfig) -> f32{
+fn debug_merge1(cfg: GiConfig) -> f32{
 	return select(0.,1., ( cfg.flags & 0x20 )!= 0);
 }
 

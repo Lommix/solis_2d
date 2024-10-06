@@ -1,62 +1,46 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
-#import lommix_light::common::{GiConfig,debug_merge, debug_probe, debug_voronoi, debug_bounce, debug_sdf, debug_light, ComputedSize}
+#import lommix_light::common::{GiConfig,debug_merge0,debug_merge1, debug_voronoi, debug_bounce, debug_sdf, debug_light, ComputedSize}
 
 @group(0) @binding(0) var main_tex: texture_2d<f32>;
-@group(0) @binding(1) var main_sampler: sampler;
+@group(0) @binding(1) var light_tex: texture_2d<f32>;
+@group(0) @binding(2) var sdf_tex: texture_2d<f32>;
+@group(0) @binding(3) var merge_tex_0: texture_2d<f32>;
+@group(0) @binding(4) var merge_tex_1: texture_2d<f32>;
 
-@group(0) @binding(2) var light_tex: texture_2d<f32>;
-@group(0) @binding(3) var light_sampler: sampler;
+@group(0) @binding(5) var point_sampler: sampler;
+@group(0) @binding(6) var linear_sampler: sampler;
 
-@group(0) @binding(4) var sdf_tex: texture_2d<f32>;
-@group(0) @binding(5) var sdf_sampler: sampler;
-
-@group(0) @binding(6) var probe_tex: texture_2d<f32>;
-@group(0) @binding(7) var probe_sampler: sampler;
-
-@group(0) @binding(8) var merge_tex: texture_2d<f32>;
-@group(0) @binding(9) var merge_sampler: sampler;
-
-@group(0) @binding(10) var<uniform> cfg: GiConfig;
-@group(0) @binding(11) var<uniform> size: ComputedSize;
+@group(0) @binding(7) var<uniform> cfg: GiConfig;
+@group(0) @binding(8) var<uniform> size: ComputedSize;
 
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	var out : vec4<f32>;
 
-	let main_sample = textureSample(main_tex, main_sampler, in.uv);
-	let sdf_sample = textureSample(sdf_tex,sdf_sampler,in.uv);
-	let light_sample = textureSample(light_tex, light_sampler, in.uv);
-	let merge_sample = textureSample(merge_tex, merge_sampler, in.uv);
+	let main_sample = textureSample(main_tex, point_sampler, in.uv);
+	let sdf_sample = textureSample(sdf_tex,point_sampler,in.uv);
+	let light_sample = textureSample(light_tex, point_sampler, in.uv);
 
-
-	let probe_0 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 0.);
-	let probe_1 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 1.);
-	let probe_2 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 2.);
-	let probe_3 = textureSample(probe_tex, probe_sampler, in.uv * vec2(0.25,1.) + vec2(0.25, 0.) * 3.);
+	let merge_sample_1 = textureSample(merge_tex_1, point_sampler, in.uv);
+	let merge_sample_0 = textureSample(merge_tex_0, point_sampler, in.uv);
 
 	// super simple ultra fast merge
 	// let probe = mix(mix(probe_0,probe_1,0.5), mix(probe_2,probe_3,0.5), 0.5);
+	var s = textureSample(light_tex, linear_sampler,in.uv);
+	let intensity = (sdf_sample.r + sdf_sample.g + sdf_sample.b)/3.;
+	let not_inside = sign(max(sdf_sample.a,0.));
+	out = main_sample + s * max(not_inside, sign(intensity));
 
-	// let s = textureSample(light_tex,probe_sampler,in.uv);
-
-	var s = sampleRadianceField(light_tex,1.,in.uv);
-	// let light_color = clamp(vec4(s.rgb,0.),vec4(0.), vec4(1.));
-	// let intensity = (sdf_sample.r + sdf_sample.g + sdf_sample.b)/3.;
-	//
-	// let not_inside = max(sign(sdf_sample.a),0.);
-	//
-	out = main_sample + s * .5;
-	// out = select(out, out+light_color, sdf_sample.a < 0.);
 
 	// debug view
-	out = mix(out, vec4(abs(sdf_sample.a/100.)), debug_sdf(cfg));
+	out = mix(out, vec4(abs(sdf_sample.a / 20.)), debug_sdf(cfg));
 	out = mix(out, vec4(sdf_sample.rgb, 1.), debug_voronoi(cfg));
 	out = mix(out, s, debug_light(cfg));
-	out = mix(out, probe_0, debug_probe(cfg));
-	out = mix(out, merge_sample, debug_merge(cfg));
+	// out = mix(out, probe_0, debug_probe(cfg));
+	out = mix(out, merge_sample_0, debug_merge0(cfg));
+	out = mix(out, merge_sample_1, debug_merge1(cfg));
 	// ----------
-
 	return out;
 }
 
@@ -102,7 +86,3 @@ fn lin_to_srgb(color: vec3<f32>) -> vec3<f32> {
    return clr;
 }
 
-
-fn get_probe_tr() -> f32 {
-	return 0.;
-}

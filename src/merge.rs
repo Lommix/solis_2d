@@ -9,7 +9,11 @@ use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            binding_types::{sampler, texture_2d, uniform_buffer}, BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState, ColorWrites, DynamicUniformBuffer, FragmentState, MultisampleState, PipelineCache, PrimitiveState, RenderPipelineDescriptor, SamplerBindingType, ShaderDefVal, ShaderStages, ShaderType, TextureSampleType
+            binding_types::{sampler, texture_2d, uniform_buffer},
+            BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
+            ColorWrites, DynamicUniformBuffer, FragmentState, MultisampleState, PipelineCache,
+            PrimitiveState, RenderPipelineDescriptor, SamplerBindingType, ShaderDefVal,
+            ShaderStages, ShaderType, TextureSampleType,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::GpuImage,
@@ -34,6 +38,8 @@ impl FromWorld for MergePipeline {
                 (
                     // sdf
                     texture_2d(TextureSampleType::Float { filterable: true }),
+                    // lerp sampler
+                    sampler(SamplerBindingType::Filtering),
                     // prev cascade
                     texture_2d(TextureSampleType::Float { filterable: true }),
                     uniform_buffer::<ComputedSize>(false),
@@ -102,12 +108,16 @@ impl FromWorld for MergePipeline {
 
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct Probe {
-    pub width: u32,
-    /// Staring offset.
-    pub start: f32,
-    /// Range of ray.
-    pub range: f32,
+    /// num of cascades
+    pub cascade_count: u32,
+    /// index of current
+    pub cascade_index: u32,
+    /// interval
+    pub cascade_interval: f32,
+    /// min probe size
+    pub probe_base: u32,
 }
+
 #[derive(Resource, Default)]
 pub struct ProbeBuffer {
     pub buffer: DynamicUniformBuffer<Probe>,
@@ -127,15 +137,14 @@ pub(crate) fn prepare_uniform(
             .get_writer(gi_cfg.cascade_count as usize, &render_device, &render_queue)
     {
         for c in 0..gi_cfg.cascade_count {
-            let i = gi_cfg.cascade_count - c;
-            let width = i as u32 * gi_cfg.probe_stride;
-            let start = gi_cfg.interval * (1.0 - f32::powi(4.0, i as i32)) / -3.0;
-            let range = gi_cfg.interval * f32::powi(4.0, i as i32);
+            let i = gi_cfg.cascade_count - 1 - c;
             let probe = Probe {
-                width,
-                start,
-                range,
+                cascade_count: gi_cfg.cascade_count,
+                cascade_index: i,
+                cascade_interval: gi_cfg.interval,
+                probe_base: gi_cfg.probe_stride,
             };
+
             offsets.push(writer.write(&probe));
         }
     }

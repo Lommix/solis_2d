@@ -24,7 +24,6 @@ mod constant;
 mod merge;
 mod mipmap;
 mod node;
-mod probe;
 mod sdf;
 mod size;
 mod targets;
@@ -72,22 +71,22 @@ impl Plugin for LightPlugin {
             "shaders/common.wgsl",
             Shader::from_wgsl
         );
-        load_internal_asset!(
-            app,
-            constant::SHAPES_SHADER,
-            "shaders/shapes.wgsl",
-            Shader::from_wgsl
-        );
-        load_internal_asset!(
-            app,
-            constant::RAYMARCH_SHADER,
-            "shaders/raymarch.wgsl",
-            Shader::from_wgsl
-        );
+        // load_internal_asset!(
+        //     app,
+        //     constant::SHAPES_SHADER,
+        //     "shaders/shapes.wgsl",
+        //     Shader::from_wgsl
+        // );
+        // load_internal_asset!(
+        //     app,
+        //     constant::RAYMARCH_SHADER,
+        //     "shaders/raymarch.wgsl",
+        //     Shader::from_wgsl
+        // );
 
         //embedd
-        embedded_asset!(app, "shaders/merge.wgsl");
-        embedded_asset!(app, "shaders/probes.wgsl");
+        // embedded_asset!(app, "shaders/merge.wgsl");
+        // embedded_asset!(app, "shaders/probes.wgsl");
         embedded_asset!(app, "shaders/sdf.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
         embedded_asset!(app, "shaders/mipmap.wgsl");
@@ -126,7 +125,6 @@ impl Plugin for LightPlugin {
             .init_resource::<ComputedSizeBuffer>()
             .init_resource::<composite::CompositePipeline>()
             .init_resource::<config::ConfigBuffer>()
-            .init_resource::<probe::ProbePipeline>()
             .init_resource::<merge::MergePipeline>()
             .init_resource::<merge::ProbeBuffer>()
             .init_resource::<mipmap::MipMapPipeline>();
@@ -141,18 +139,8 @@ fn watch(mut shaders: ResMut<Assets<Shader>>) {
 
     watch_assset(
         &mut shaders,
-        current_dir.join("shaders/raymarch.wgsl"),
-        constant::RAYMARCH_SHADER,
-    );
-    watch_assset(
-        &mut shaders,
         current_dir.join("shaders/common.wgsl"),
         constant::COMMON_SHADER,
-    );
-    watch_assset(
-        &mut shaders,
-        current_dir.join("shaders/shapes.wgsl"),
-        constant::SHAPES_SHADER,
     );
 }
 

@@ -5,9 +5,9 @@ use bevy::{
         render_resource::{
             binding_types::{sampler, texture_2d, uniform_buffer},
             BindGroupLayout, BindGroupLayoutEntries, CachedRenderPipelineId, ColorTargetState,
-            ColorWrites, FragmentState, MultisampleState, PipelineCache, PrimitiveState,
-            RenderPipelineDescriptor, SamplerBindingType, ShaderStages, TextureFormat,
-            TextureSampleType,
+            ColorWrites, FilterMode, FragmentState, MultisampleState, PipelineCache,
+            PrimitiveState, RenderPipelineDescriptor, Sampler, SamplerBindingType,
+            SamplerDescriptor, ShaderStages, TextureFormat, TextureSampleType,
         },
         renderer::RenderDevice,
         texture::BevyDefault,
@@ -23,6 +23,8 @@ use crate::{
 pub struct CompositePipeline {
     pub layout: BindGroupLayout,
     pub id: CachedRenderPipelineId,
+    pub point_sampler: Sampler,
+    pub linear_sampler: Sampler,
 }
 
 impl FromWorld for CompositePipeline {
@@ -36,18 +38,17 @@ impl FromWorld for CompositePipeline {
                 (
                     //main tex
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                    //light tex
+                    //light mipmap tex
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
                     //sdf tex
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                    //probe tex
+                    //merge tex 0
                     texture_2d(TextureSampleType::Float { filterable: true }),
-                    sampler(SamplerBindingType::Filtering),
-                    //merge tex
+                    //merge tex 1
                     texture_2d(TextureSampleType::Float { filterable: true }),
+                    //point sample
+                    sampler(SamplerBindingType::Filtering),
+                    //linear sample
                     sampler(SamplerBindingType::Filtering),
                     //config
                     uniform_buffer::<GpuConfig>(false),
@@ -59,6 +60,14 @@ impl FromWorld for CompositePipeline {
         let server = world.resource::<AssetServer>();
         // let shader = server.load("composite.wgsl");
         let shader = server.load("embedded://lommix_light/shaders/composite.wgsl");
+
+        let point_sampler = render_device.create_sampler(&SamplerDescriptor::default());
+        let linear_sampler = render_device.create_sampler(&SamplerDescriptor {
+            label: Some("linear_sampler"),
+            mipmap_filter: FilterMode::Linear,
+            mag_filter: FilterMode::Linear,
+            ..default()
+        });
 
         let id =
             world
@@ -76,14 +85,19 @@ impl FromWorld for CompositePipeline {
                         shader_defs: vec![],
                         entry_point: "fragment".into(),
                         targets: vec![Some(ColorTargetState {
-                            // format: TextureFormat::Rgba16Float,
-                            format: TextureFormat::bevy_default(),
+                            format: TextureFormat::Rgba16Float,
+                            // format: TextureFormat::bevy_default(),
                             blend: None,
                             write_mask: ColorWrites::ALL,
                         })],
                     }),
                 });
 
-        Self { layout, id }
+        Self {
+            layout,
+            id,
+            point_sampler,
+            linear_sampler,
+        }
     }
 }

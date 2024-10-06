@@ -14,10 +14,7 @@ use bevy::{
 #[derive(Resource, ExtractResource, Clone)]
 pub struct RenderTargets {
     pub sdf_target: Handle<Image>,
-    pub probe_target: Handle<Image>,
     pub merge_targets: Vec<MergeTarget>,
-    // pub light_target: Handle<Image>,
-    // pub bounce_target: Handle<Image>,
     pub light_mipmap_target: Handle<Image>,
 }
 
@@ -25,7 +22,6 @@ impl RenderTargets {
     #[rustfmt::skip]
     pub fn from_size(size: &ComputedSize, cfg: &GiConfig, images: &mut Assets<Image>) -> Self {
         let sdf_target          = Handle::weak_from_u128(905214787963254423236589025);
-        let probe_target        = Handle::weak_from_u128(531037848998654123701989143);
         let light_mipmap_target = Handle::weak_from_u128(139987876583680013788430531);
 
         images.insert(
@@ -41,36 +37,15 @@ impl RenderTargets {
             &light_mipmap_target,
             create_image(
                 size.scaled.as_vec2()/cfg.probe_stride as f32,
-                constant::PROBE_FORMAT,
+                constant::MERGE_FORMAT,
                 ImageSampler::linear(),
             ),
         );
 
-        images.insert(
-            &probe_target,
-            create_image(
-                size.cascade_size.as_vec2(),
-                constant::PROBE_FORMAT,
-                ImageSampler::nearest(),
-            ),
-        );
-
         let mut merge_targets : Vec<MergeTarget> = Vec::new();
-
         // ping pong later
-        for i in 0 .. (cfg.cascade_count) {
-            // in reverse order small to large
-            // following the cascade order
-            // skip last one
-            let index = cfg.cascade_count - i - 1;
+        for i in 0 .. 2_u32 {
             let handle = Handle::weak_from_u128(2708123423123005630984328769 + u128::from(i));
-            // let merge_size = IVec2::new(
-            //     size.scaled.x/probe_stride,
-            //     size.scaled.y/probe_stride,
-            // );
-
-            // info!("[{i}] -- size {merge_size} -- stride {probe_stride} -- original {}", size.scaled);
-
             images.insert(
                 &handle,
                 create_image(
@@ -87,7 +62,6 @@ impl RenderTargets {
 
         Self {
             sdf_target,
-            probe_target,
             merge_targets,
             light_mipmap_target,
         }

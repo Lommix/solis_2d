@@ -24,7 +24,7 @@ pub struct ComputedSizeBuffer(UniformBuffer<ComputedSize>);
 impl ComputedSize {
     pub fn from_window(
         window: &Window,
-        scale: i32,
+        scale: f32,
         cascade_count : u32,
     ) -> Self {
         let width = window.physical_width();
@@ -39,21 +39,21 @@ impl ComputedSize {
             size.y += 1;
         }
 
-        let mut downscaled_size = size/scale;//+ (scale - size%scale);
-        if size.x%scale  > 0 {
-            downscaled_size.x += scale - size.x%scale;
-        }
-
-        if size.y%scale  > 0 {
-            downscaled_size.y += scale - size.y%scale;
-        }
-
-        let probe_size =  downscaled_size * IVec2::new(4, 1);
+        let mut downscaled_size = size.as_vec2()/scale;//+ (scale - size%scale);
+        // if size.x%scale  > 0 {
+        //     downscaled_size.x += scale - size.x%scale;
+        // }
+        //
+        // if size.y%scale  > 0 {
+        //     downscaled_size.y += scale - size.y%scale;
+        // }
+        //
+        let probe_size =  downscaled_size * Vec2::new(4., 1.);
 
         Self {
             native: size,
-            scaled: downscaled_size,
-            cascade_size: probe_size,
+            scaled: downscaled_size.as_ivec2(),
+            cascade_size: probe_size.as_ivec2(),
         }
     }
 }

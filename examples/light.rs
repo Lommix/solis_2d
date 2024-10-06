@@ -1,4 +1,5 @@
 use bevy::{
+    core_pipeline::tonemapping::Tonemapping,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     input::mouse::MouseWheel,
     prelude::*,
@@ -61,8 +62,20 @@ fn monitor(diagnostics: Res<DiagnosticsStore>) {
 }
 
 fn setup(mut cmd: Commands, server: Res<AssetServer>) {
-    cmd.spawn(Camera2dBundle::default())
-        .insert(Light2dCameraTag);
+    cmd.spawn((
+        Camera2dBundle {
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
+                .looking_at(Vec3::default(), Vec3::Y),
+            camera: Camera {
+                clear_color: Color::BLACK.into(),
+                hdr: true,
+                ..default()
+            },
+            tonemapping: Tonemapping::AcesFitted,
+            ..default()
+        },
+        Light2dCameraTag,
+    ));
 
     for x in -4..=8 {
         for y in -4..=8 {
@@ -139,20 +152,18 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
         .show(egui.ctx_mut(), |ui| {
             ui.label("probe stride");
             ui.add(egui::Slider::new(&mut gi_config.probe_stride, (2)..=16));
-
             ui.label("cascade count");
-            ui.add(egui::Slider::new(&mut gi_config.cascade_count, (1)..=8));
-
+            ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
             ui.label("interval");
-            ui.add(egui::Slider::new(&mut gi_config.interval, (0.)..=50.));
+            ui.add(egui::Slider::new(&mut gi_config.interval, (1.)..=100.));
             ui.label("scale");
-            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1)..=10));
+            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (1.)..=10.));
 
             flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
             flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_config, "VORONOI");
             flag_checkbox(GiFlags::DEBUG_LIGHT, ui, &mut gi_config, "LIGHT");
-            flag_checkbox(GiFlags::DEBUG_PROBE, ui, &mut gi_config, "PROBE");
-            flag_checkbox(GiFlags::DEBUG_MERGE, ui, &mut gi_config, "MERGE");
+            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut gi_config, "MERGE0");
+            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut gi_config, "MERGE1");
         });
 }
 
@@ -258,16 +269,12 @@ fn scroll(
     let dir = event.y.signum();
     match inputs.pressed(KeyCode::ShiftLeft) {
         true => {
+            info!("inc intensity");
             emitter.intensity = (emitter.intensity + dir * 5.).max(0.);
         }
         false => {
             *multi = (*multi + dir).max(0.);
             emitter.shape = SdfShape::Circle(*multi);
-            // let Ok(mut transform) = camera.get_single_mut() else {
-            //     return;
-            // };
-            // transform.scale =
-            //     (transform.scale + Vec3::splat(0.1) * event.y.signum()).max(Vec3::splat(0.1));
         }
     }
 }
@@ -285,10 +292,10 @@ fn move_camera(mut camera: Query<&mut Transform, With<Camera>>, inputs: Res<Butt
         0.,
     ) * 2.;
 
-    if inputs.just_pressed(KeyCode::KeyI) {
+    if inputs.just_pressed(KeyCode::KeyO) {
         transform.scale += Vec3::splat(0.05);
     }
-    if inputs.just_pressed(KeyCode::KeyU) {
+    if inputs.just_pressed(KeyCode::KeyI) {
         transform.scale -= Vec3::splat(0.05);
     }
 }
@@ -314,6 +321,7 @@ fn move_light(
         return;
     };
 
+    let scale = transforms.get(camera.single()).unwrap().scale.x;
     let Some(mut light_transform) = light
         .get_single()
         .ok()
@@ -323,8 +331,8 @@ fn move_light(
         return;
     };
 
-    light_transform.translation.x = cursor_pos.x;
-    light_transform.translation.y = cursor_pos.y;
+    light_transform.translation.x = cursor_pos.x * scale;
+    light_transform.translation.y = cursor_pos.y * scale;
 }
 
 trait Preview {
