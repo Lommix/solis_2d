@@ -1,3 +1,8 @@
-# lommix light
+# future-gi-crate
 
-my internal 2d lighing plugin using radiance cascade and normal maps.
+### 2D Global Illumination with Radiance Cascade
+
+Radiance Cascade Global Illumation following latest
+optimization strategies.
+
+[reference](https://mini.gmshaders.com/p/radiance-cascades2)

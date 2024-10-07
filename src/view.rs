@@ -36,7 +36,7 @@ pub struct RadianceConfig {
 impl Default for RadianceConfig {
     fn default() -> Self {
         Self {
-            interval: 1.,
+            interval: 6.,
             scale_factor: 1.,
             cascade_count: 6,
             probe_base: 2,

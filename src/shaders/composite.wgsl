@@ -18,7 +18,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let merge_sample_1 = textureSample(merge_tex_1, point_sampler, in.uv);
 	let merge_sample_0 = textureSample(merge_tex_0, point_sampler, in.uv);
 
-	let light = textureSample(merge_tex_0, radiance_sampler ,in.uv);
+	let light = textureSample(merge_tex_0, radiance_sampler, in.uv);
 
 	let edge_intensity = 1./abs(sdf_sample.a) * 8.;
 	let inside = sign(abs(max(sdf_sample.a,0.)));

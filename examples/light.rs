@@ -362,6 +362,6 @@ fn move_light(
         return;
     };
 
-    light_transform.translation.x = cursor_pos.x * scale;
-    light_transform.translation.y = cursor_pos.y * scale;
+    light_transform.translation.x = cursor_pos.x / scale;
+    light_transform.translation.y = cursor_pos.y / scale;
 }

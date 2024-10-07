@@ -83,10 +83,11 @@ fn merge(
 	var interpN1 = vec2(index % angularN1, floor(index / angularN1)) * extentN1;
 	interpN1 += clamp((probe * 0.5) + 0.25, vec2(0.5), extentN1 - 0.5);
 
-	let radianceN1 = textureSample(
+	let radianceN1 = textureSampleLevel(
 		last_cascade,
 		rad_sampler,
 		interpN1 * (1.0 / vec2<f32>(size)),
+		16.
 	);
 
 	return radiance + radianceN1;
