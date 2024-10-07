@@ -12,7 +12,7 @@ use bevy::{
     },
 };
 
-use crate::{cascade::Probe, constant::CASCADE_FORMAT};
+use crate::{constant::CASCADE_FORMAT, radiance::Probe};
 
 //@dep
 #[derive(Component, Default, ExtractComponent, Clone, Copy)]
@@ -84,13 +84,13 @@ pub(crate) fn prepare_config(
         let native = Vec2::new(target_size.width as f32, target_size.height as f32);
         let scaled = native / cfg.scale_factor;
 
-
         let mut config_buffer = UniformBuffer::<GiGpuConfig>::default();
-        config_buffer.get_mut().native = native.as_uvec2();
-        config_buffer.get_mut().scaled = scaled.as_uvec2();
-        config_buffer.get_mut().cascade_count = cfg.cascade_count;
-        config_buffer.get_mut().scale = cfg.scale_factor;
-        config_buffer.get_mut().flags = flags.map(|f| f.0.bits()).unwrap_or_default();
+        let config = config_buffer.get_mut();
+        config.native = native.as_uvec2();
+        config.scaled = scaled.as_uvec2();
+        config.cascade_count = cfg.cascade_count;
+        config.scale = cfg.scale_factor;
+        config.flags = flags.map(|f| f.0.bits()).unwrap_or_default();
         config_buffer.write_buffer(&render_device, &render_queue);
 
         let mut probe_buffer = DynamicUniformBuffer::default();
@@ -124,8 +124,11 @@ pub(crate) fn prepare_textures(
     views.iter().for_each(|(entity, view_target, cfg)| {
         let mut size = view_target.main_texture().size();
         size.depth_or_array_layers = 1;
+
         size.width = (size.width as f32 / cfg.scale_factor) as u32;
         size.height = (size.height as f32 / cfg.scale_factor) as u32;
+        size.width += size.width % 2;
+        size.height += size.height % 2;
 
         let mut new_texture = |extent: Extent3d| {
             texture_cache.get(

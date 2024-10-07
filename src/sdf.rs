@@ -1,4 +1,4 @@
-use crate::{camera::GiGpuConfig, constant::SDF_FORMAT};
+use crate::{view::GiGpuConfig, constant::SDF_FORMAT};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,

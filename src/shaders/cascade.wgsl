@@ -4,8 +4,6 @@
 #import lommix_light::raymarch::{raymarch_probe}
 #import bevy_render::maths::{PI_2, HALF_PI}
 
-
-
 @group(0) @binding(0) var sdf_tex: texture_2d<f32>;
 @group(0) @binding(1) var last_cascade: texture_2d<f32>;
 @group(0) @binding(2) var rad_sampler: sampler;
@@ -15,8 +13,7 @@
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
-	let cascade_size = in_cfg.scaled / in_probe.base;
-
+	let cascade_size	= in_cfg.scaled / in_probe.base;
 	let coord			= floor(vec2<f32>(cascade_size) * in.uv);
 	let sqr_angular		= pow(2.,f32(in_probe.cascade_index));
 	let extent			= floor(vec2<f32>(cascade_size) / sqr_angular);
@@ -38,9 +35,6 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		out += merge(radiance, preavg, extent, probe.xy) * 0.25;
 	}
 
-	// if in_probe.cascade_index == 0 {
-	// 	// out = linear(out);
-	// }
 	return out;
 }
 
@@ -54,7 +48,7 @@ fn march(
 	var dst_traveled= 0.;
 	var sample : vec4<f32>;
 
-	for(var i = 0; i < 32; i ++){
+	for(var i = 0; i < 16; i ++){
 		let ray = ( origin + ( delta * dst_traveled ));
         sample = textureLoad(sdf_tex, vec2<u32>(ray),0);
 		dst_traveled += sample.a;
@@ -95,11 +89,5 @@ fn merge(
 		interpN1 * (1.0 / vec2<f32>(size)),
 	);
 
-
 	return radiance + radianceN1;
-}
-
-fn linear(in : vec4<f32>) -> vec4<f32>{
-	let rgb = pow(in.rgb,vec3(1./2.2));
-	return vec4(rgb,1.);
 }

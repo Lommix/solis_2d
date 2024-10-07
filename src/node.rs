@@ -1,7 +1,7 @@
 use crate::{
-    camera::{RadianceBuffers, RadianceConfig, RadianceTargets},
-    cascade::CascadePipeline,
+    radiance::RadiancePipeline,
     sdf::{SdfBuffers, SdfPipeline},
+    view::{RadianceBuffers, RadianceConfig, RadianceTargets},
 };
 use bevy::{
     ecs::{query::QueryItem, system::lifetimeless::Read},
@@ -44,7 +44,7 @@ impl render_graph::ViewNode for LightNode {
         let sdf_pipeline = world.resource::<SdfPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let sdf_buffers = world.resource::<SdfBuffers>();
-        let cascade_pipeline = world.resource::<CascadePipeline>();
+        let cascade_pipeline = world.resource::<RadiancePipeline>();
         let post_process = view_target.post_process_write();
 
         // ------------------------------------
@@ -122,8 +122,7 @@ impl render_graph::ViewNode for LightNode {
         }
 
         // ---------------------------------------------------------------
-        // merge probes
-        // small to high resolution ...
+        // ping pong cascades
         for i in 0..(config.cascade_count as usize) {
             let (current_target, last_target) = if i % 2 == 0 {
                 (

@@ -1,4 +1,4 @@
-use crate::{camera::GiGpuConfig, constant::CASCADE_FORMAT};
+use crate::{view::GiGpuConfig, constant::CASCADE_FORMAT};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
@@ -16,7 +16,7 @@ use bevy::{
 
 /// folding the cascades back into one
 #[derive(Resource)]
-pub struct CascadePipeline {
+pub struct RadiancePipeline {
     pub cascade_layout: BindGroupLayout,
     pub cascade_id: CachedRenderPipelineId,
     pub composite_id: CachedRenderPipelineId,
@@ -25,7 +25,7 @@ pub struct CascadePipeline {
     pub point_sampler: Sampler,
 }
 
-impl FromWorld for CascadePipeline {
+impl FromWorld for RadiancePipeline {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
         let cascade_layout = create_cascade_layout(&render_device);
@@ -36,7 +36,7 @@ impl FromWorld for CascadePipeline {
         let cache = world.resource::<PipelineCache>();
 
         let cascade_id = cache.queue_render_pipeline(RenderPipelineDescriptor {
-            label: Some("merge_pipline".into()),
+            label: Some("cascade_pipeline".into()),
             layout: vec![cascade_layout.clone()],
             push_constant_ranges: vec![],
             vertex: fullscreen_shader_vertex_state(),
@@ -78,10 +78,7 @@ impl FromWorld for CascadePipeline {
         let radiance_sampler = render_device.create_sampler(&SamplerDescriptor {
             label: Some("radiance sampler"),
             mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Linear,
             mipmap_filter: FilterMode::Linear,
-            lod_min_clamp: 0.,
-            lod_max_clamp: 32.,
             ..default()
         });
 
@@ -113,7 +110,7 @@ fn create_composite_layout(render_device: &RenderDevice) -> BindGroupLayout {
                 //linear sample
                 sampler(SamplerBindingType::Filtering),
                 //point sample
-                sampler(SamplerBindingType::Filtering),
+                sampler(SamplerBindingType::NonFiltering),
                 //config
                 uniform_buffer::<GiGpuConfig>(false),
             ),
@@ -130,6 +127,7 @@ fn create_cascade_layout(render_device: &RenderDevice) -> BindGroupLayout {
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 // last cascade
                 texture_2d(TextureSampleType::Float { filterable: true }),
+                // radiance sampler
                 sampler(SamplerBindingType::Filtering),
                 uniform_buffer::<GiGpuConfig>(false),
                 uniform_buffer::<Probe>(true),

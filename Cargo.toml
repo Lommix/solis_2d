@@ -1,5 +1,7 @@
 [package]
 name = "lommix_light"
+authors = ["Lorenz Mielke"]
+description = "2D global illumination with optimized radiance cascade"
 version = "0.1.0"
 edition = "2021"
 
@@ -20,7 +22,12 @@ rustflags = ["--cfg=web_sys_unstable_apis"]
 
 [dev-dependencies]
 bevy_egui = "0.28"
+egui_extras = { version = "0.29.1", features = ["all_loaders"] }
 image = "0.25.2"
 
 [features]
 dev = ["bevy/file_watcher", "bevy/embedded_watcher"]
+
+[[example]]
+name = "light"
+path = "examples/light.rs"

@@ -12,17 +12,17 @@ use bevy::{
 };
 use std::{path::PathBuf, time::Duration};
 
-mod camera;
-mod cascade;
 mod constant;
 mod node;
+mod radiance;
 mod sdf;
+mod view;
 
 pub mod prelude {
-    pub use super::camera::{
+    pub use super::sdf::{Emitter, Occluder, SdfShape};
+    pub use super::view::{
         GiFlags, Light2dCameraTag, RadianceCameraBundle, RadianceConfig, RadianceDebug,
     };
-    pub use super::sdf::{Emitter, Occluder, SdfShape};
     pub use super::LightPlugin;
 }
 
@@ -34,9 +34,9 @@ impl Plugin for LightPlugin {
         #[rustfmt::skip]
         app
             .add_plugins((
-                ExtractComponentPlugin::<camera::Light2dCameraTag>::default(),
-                ExtractComponentPlugin::<camera::RadianceConfig>::default(),
-                ExtractComponentPlugin::<camera::RadianceDebug>::default(),
+                ExtractComponentPlugin::<view::Light2dCameraTag>::default(),
+                ExtractComponentPlugin::<view::RadianceConfig>::default(),
+                ExtractComponentPlugin::<view::RadianceDebug>::default(),
             ));
 
         // adds some hot reloading for dev
@@ -63,14 +63,13 @@ impl Plugin for LightPlugin {
         };
 
         render_app
-            // .insert_resource(self.settings.clone())
             .add_systems(ExtractSchedule, sdf::extract_occluder)
             .add_systems(
                 Render,
                 (
                     sdf::prepare_sdf_buffers,
-                    camera::prepare_config,
-                    camera::prepare_textures,
+                    view::prepare_config,
+                    view::prepare_textures,
                 )
                     .in_set(RenderSet::Prepare),
             )
@@ -86,7 +85,7 @@ impl Plugin for LightPlugin {
         render_app
             .init_resource::<sdf::SdfPipeline>()
             .init_resource::<sdf::SdfBuffers>()
-            .init_resource::<cascade::CascadePipeline>();
+            .init_resource::<radiance::RadiancePipeline>();
     }
 }
 
