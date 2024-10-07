@@ -1,3 +1,4 @@
+use crate::{camera::GiGpuConfig, constant::SDF_FORMAT};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
@@ -13,8 +14,6 @@ use bevy::{
         Extract,
     },
 };
-
-use crate::{constant::SDF_FORMAT, prelude::ComputedSize};
 
 #[derive(Resource)]
 pub struct SdfPipeline {
@@ -33,7 +32,7 @@ impl FromWorld for SdfPipeline {
                     uniform_buffer::<ViewUniform>(true),
                     storage_buffer_read_only::<GpuCircleBuffer>(false),
                     storage_buffer_read_only::<GpuRectBuffer>(false),
-                    uniform_buffer::<ComputedSize>(false),
+                    uniform_buffer::<GiGpuConfig>(false),
                 ),
             ),
         );

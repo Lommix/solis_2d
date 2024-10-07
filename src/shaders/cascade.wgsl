@@ -7,18 +7,15 @@
 
 
 @group(0) @binding(0) var sdf_tex: texture_2d<f32>;
-@group(0) @binding(1) var lerp_sampler: sampler;
-@group(0) @binding(2) var last_cascade: texture_2d<f32>;
-@group(0) @binding(3) var<uniform> in_size: ComputedSize;
-@group(0) @binding(4) var<uniform> in_cfg: GiConfig;
-@group(0) @binding(5) var<uniform> in_probe: Probe;
+@group(0) @binding(1) var last_cascade: texture_2d<f32>;
+@group(0) @binding(2) var rad_sampler: sampler;
+@group(0) @binding(3) var<uniform> in_cfg: GiConfig;
+@group(0) @binding(4) var<uniform> in_probe: Probe;
 
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
-
-
-	let cascade_size = in_size.scaled / i32(in_cfg.probe_stride);
+	let cascade_size = in_cfg.scaled / in_probe.base;
 
 	let coord			= floor(vec2<f32>(cascade_size) * in.uv);
 	let sqr_angular		= pow(2.,f32(in_probe.cascade_index));
@@ -38,18 +35,12 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		let delta = vec2(cos(theta), -sin(theta));
 		let ray = origin + (delta * interval);
 		let radiance = march(ray, delta, limit);
-
 		out += merge(radiance, preavg, extent, probe.xy) * 0.25;
 	}
 
 	// if in_probe.cascade_index == 0 {
-	// 	out = linear(out);
-	// 	// out = vec4(0.);
+	// 	// out = linear(out);
 	// }
-
-	// out.g += probe.g * 0.1;
-	// out.r += probe.r * 0.1;
-
 	return out;
 }
 
@@ -60,68 +51,25 @@ fn march(
 	interval: f32,
 ) -> vec4<f32> {
 
-	var rr = 0.;
-	var dd : vec4<f32>;
+	var dst_traveled= 0.;
+	var sample : vec4<f32>;
 
 	for(var i = 0; i < 32; i ++){
+		let ray = ( origin + ( delta * dst_traveled ));
+        sample = textureLoad(sdf_tex, vec2<u32>(ray),0);
+		dst_traveled += sample.a;
 
-		let ray = ( origin + ( delta * rr ));
-        dd = textureLoad(sdf_tex, vec2<u32>(ray),0);
-		rr += dd.a;
-
-		if (rr >= interval){
+		if (dst_traveled >= interval){
 			break;
 		}
 
-		if dd.a < 0.001 {
-			return vec4(dd.rgb, 0.0);
+		if sample.a < 1.0 {
+			return vec4(sample.rgb, 0.0);
 		}
 	}
 
 	return vec4(0.,0.,0.,1.);
 }
-
-
-fn raymarch(
-	origin: vec2<f32>,
-	direction: vec2<f32>,
-	range: f32,
-) -> vec4<f32> {
-	var out : vec4<f32>;
-	var travel_dist = 0.;
-	var position = origin;
-
-	out.a = 1.;
-
-	for (var i = 0; i < 32; i ++ )
-	{
-        if (
-            travel_dist >= range ||
-            any(position < vec2<f32>(0.0))
-        ) {
-            break;
-        }
-
-        let coord = vec2<u32>(position);
-        let sdf_sample = textureLoad(sdf_tex, coord, 0);
-		let dist = sdf_sample.a;
-
-		let rgb = sdf_sample.rgb;
-		let intensity = (rgb.r + rgb.b + rgb.g);
-
-		//follow ray to start position
-        if dist < EPSILON {
-			out = vec4(sdf_sample.rgb, 0.);
-            break;
-		}
-
-		position += direction * dist;
-		travel_dist += dist;
-	}
-
-	return out;
-}
-
 
 fn merge(
 	radiance: vec4<f32>,
@@ -130,7 +78,7 @@ fn merge(
 	probe:	vec2<f32>,
 ) -> vec4<f32> {
 
-	let size = in_size.scaled / i32(in_cfg.probe_stride);
+	let size = in_cfg.scaled / in_probe.base;
 
 	if (radiance.a == 0.0 || in_probe.cascade_index >= in_probe.cascade_count - 1){
 		return vec4(radiance.rgb, 1.0 - radiance.a);
@@ -141,12 +89,12 @@ fn merge(
 	var interpN1 = vec2(index % angularN1, floor(index / angularN1)) * extentN1;
 	interpN1 += clamp((probe * 0.5) + 0.25, vec2(0.5), extentN1 - 0.5);
 
-
 	let radianceN1 = textureSample(
 		last_cascade,
-		lerp_sampler,
+		rad_sampler,
 		interpN1 * (1.0 / vec2<f32>(size)),
 	);
+
 
 	return radiance + radianceN1;
 }

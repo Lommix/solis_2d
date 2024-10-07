@@ -27,7 +27,7 @@ pub fn main() {
             LightPlugin::default(),
             FrameTimeDiagnosticsPlugin,
         ))
-        .add_systems(Startup, (setup, debug_targets))
+        .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
@@ -36,7 +36,6 @@ pub fn main() {
                 move_camera,
                 move_light,
                 spawn_light,
-                on_change,
                 clear,
                 config,
                 monitor,
@@ -62,8 +61,8 @@ fn monitor(diagnostics: Res<DiagnosticsStore>) {
 }
 
 fn setup(mut cmd: Commands, server: Res<AssetServer>) {
-    cmd.spawn((
-        Camera2dBundle {
+    cmd.spawn(RadianceCameraBundle {
+        camera_bundle: Camera2dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
                 .looking_at(Vec3::default(), Vec3::Y),
             camera: Camera {
@@ -74,8 +73,8 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
             tonemapping: Tonemapping::AcesFitted,
             ..default()
         },
-        Light2dCameraTag,
-    ));
+        ..default()
+    });
 
     for x in -4..=8 {
         for y in -4..=8 {
@@ -119,39 +118,16 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
     ));
 }
 
-fn debug_targets(mut cmd: Commands, render_targets: Res<RenderTargets>) {
-    cmd.spawn(NodeBundle {
-        style: Style {
-            border: UiRect::all(Val::Px(5.)),
-            padding: UiRect::all(Val::Px(2.)),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-        ..default()
-    })
-    .with_children(|cmd| {
-        let node = NodeBundle::default();
-        cmd.spawn(node).with_children(|cmd| {
-            cmd.preview(render_targets.sdf_target.clone(), "SDF", 200., 200.);
-        });
+fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut egui: EguiContexts) {
+    let Ok((mut gi_config, mut gi_debug)) = gi_config.get_single_mut() else {
+        return;
+    };
 
-        let mut node = NodeBundle::default();
-        node.style.width = Val::Px(200.);
-        node.style.flex_direction = FlexDirection::Column;
-        cmd.spawn(node).with_children(|cmd| {
-            for m in render_targets.merge_targets.iter() {
-                cmd.preview(m.img.clone(), "merge", 200., 200.);
-            }
-        });
-    });
-}
-
-fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
     egui::Window::new("Gi Config")
         .anchor(egui::Align2::RIGHT_TOP, [0., 0.])
         .show(egui.ctx_mut(), |ui| {
             ui.label("probe stride");
-            ui.add(egui::Slider::new(&mut gi_config.probe_stride, (2)..=16));
+            ui.add(egui::Slider::new(&mut gi_config.probe_base, (2)..=16));
             ui.label("cascade count");
             ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
             ui.label("interval");
@@ -159,28 +135,20 @@ fn config(mut gi_config: ResMut<GiConfig>, mut egui: EguiContexts) {
             ui.label("scale");
             ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
 
-            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_config, "SDF");
-            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_config, "VORONOI");
-            flag_checkbox(GiFlags::DEBUG_LIGHT, ui, &mut gi_config, "LIGHT");
-            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut gi_config, "MERGE0");
-            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut gi_config, "MERGE1");
+            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_debug, "SDF");
+            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_debug, "VORONOI");
+            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut gi_debug, "MERGE0");
+            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut gi_debug, "MERGE1");
         });
 }
 
-fn on_change(mut cmd: Commands, config: Res<GiConfig>, mut local: Local<GiConfig>) {
-    if *local != *config {
-        local.clone_from(&config);
-        cmd.trigger(ResizeEvent);
-    }
-}
-
-fn flag_checkbox(bit: GiFlags, ui: &mut egui::Ui, cfg: &mut GiConfig, label: &str) {
-    let mut state = (cfg.flags & bit) != GiFlags::DEFAULT;
+fn flag_checkbox(bit: GiFlags, ui: &mut egui::Ui, flags: &mut GiFlags, label: &str) {
+    let mut state = (*flags & bit) != GiFlags::DEFAULT;
     ui.checkbox(&mut state, label);
     if state {
-        cfg.flags |= bit;
+        *flags |= bit;
     } else {
-        cfg.flags &= !bit;
+        *flags &= !bit;
     }
 }
 
@@ -270,7 +238,7 @@ fn scroll(
     match inputs.pressed(KeyCode::ShiftLeft) {
         true => {
             info!("inc intensity");
-            emitter.intensity = (emitter.intensity + dir * 5.).max(0.);
+            emitter.intensity = (emitter.intensity + dir * 0.1).max(0.);
         }
         false => {
             *multi = (*multi + dir).max(0.);
@@ -333,49 +301,4 @@ fn move_light(
 
     light_transform.translation.x = cursor_pos.x * scale;
     light_transform.translation.y = cursor_pos.y * scale;
-}
-
-trait Preview {
-    fn preview(&mut self, handle: Handle<Image>, title: &str, width: f32, height: f32);
-}
-
-impl Preview for ChildBuilder<'_> {
-    fn preview(&mut self, handle: Handle<Image>, title: &str, width: f32, height: f32) {
-        let mut node = NodeBundle::default();
-        node.border_color = BorderColor(Color::WHITE);
-        node.style.width = Val::Auto;
-        node.border_radius = BorderRadius::all(Val::Px(10.));
-        node.style.border = UiRect::all(Val::Px(2.));
-        node.background_color = BackgroundColor(Color::BLACK);
-        self.spawn(node).with_children(|cmd| {
-            cmd.spawn(ImageBundle {
-                image: UiImage {
-                    texture: handle,
-                    ..default()
-                },
-                style: Style {
-                    width: Val::Px(width),
-                    height: Val::Px(height),
-                    ..default()
-                },
-                ..default()
-            });
-
-            let mut text = TextBundle::default();
-            text.style.position_type = PositionType::Absolute;
-            text.style.bottom = Val::Percent(2.);
-            text.style.left = Val::Px(2.);
-            text.style.justify_self = JustifySelf::Center;
-            text.text.sections = vec![TextSection::new(
-                title,
-                TextStyle {
-                    font_size: 16.,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            )];
-
-            cmd.spawn(text);
-        });
-    }
 }

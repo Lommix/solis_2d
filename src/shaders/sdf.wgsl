@@ -1,11 +1,11 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_render::view::View
-#import lommix_light::common::{ GiConfig, ComputedSize, random, PI, TAU }
+#import lommix_light::common::{ GiConfig, random, PI, TAU }
 
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<storage> circle_occluder_buffer: CircleBuffer;
 @group(0) @binding(2) var<storage> rect_occluder_buffer: RectBuffer;
-@group(0) @binding(3) var<uniform> computed_size: ComputedSize;
+@group(0) @binding(3) var<uniform> in_cfg: GiConfig;
 
 struct CircleBuffer {
     count: u32,
@@ -38,7 +38,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	var dist = 1e+10;
 	var emit : vec3<f32>;
 
-	let size = vec2<f32>(computed_size.native);
+	let size = vec2<f32>(in_cfg.native);
 	let frag_pos = vec2(size.x * in.uv.x,  size.y - size.y * in.uv.y);
 	let ndc_pos = vec4<f32>((frag_pos.x / size.x) * 2.0 - 1.0,
                             (frag_pos.y / size.y) * 2.0 - 1.0,
@@ -69,7 +69,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		dist = min(dist, world_dist);
 	}
 
-	let scale = f32(computed_size.native.x)/f32(computed_size.scaled.x);
+	let scale = f32(in_cfg.native.x)/f32(in_cfg.scaled.x);
 	return vec4(emit, dist / scale);
 }
 

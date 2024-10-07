@@ -12,46 +12,28 @@ struct Probe {
 }
 
 struct GiConfig{
-	probe_size: f32,
-	scale_factor: i32,
-	flags: u32,
+	native: vec2<u32>,
+	scaled: vec2<u32>,
+	scale: f32,
 	cascade_count: u32,
-	probe_stride: u32,
+	flags: u32,
 }
 
 
-struct ComputedSize{
-	native: vec2<i32>,
-	scaled: vec2<i32>,
-	probe: vec2<i32>,
-}
-
-fn debug_voronoi(cfg: GiConfig) -> f32{
+fn debug_sdf(cfg: GiConfig) -> f32{
 	return select(0.,1., (( cfg.flags & 0x1 )!= 0));
 }
 
-fn debug_sdf(cfg: GiConfig) -> f32{
-	return select(0.,1., (( cfg.flags & 0x2 )!= 0));
-}
-
-fn debug_light(cfg: GiConfig) -> f32{
-	return select(0.,1., ( cfg.flags & 0x4 )!= 0);
-}
-
-fn debug_bounce(cfg: GiConfig) -> f32{
-	return select(0.,1., ( cfg.flags & 0x8 )!= 0);
+fn debug_voronoi(cfg: GiConfig) -> f32{
+	return select(0.,1., (( cfg.flags >> 1 & 0x1 )!= 0));
 }
 
 fn debug_merge0(cfg: GiConfig) -> f32{
-	return select(0.,1., ( cfg.flags & 0x10 )!= 0);
+	return select(0.,1., ( cfg.flags >> 2 & 0x1 )!= 0);
 }
 
 fn debug_merge1(cfg: GiConfig) -> f32{
-	return select(0.,1., ( cfg.flags & 0x20 )!= 0);
-}
-
-fn debug_final(cfg: GiConfig) -> f32 {
-	return select(0.,1., (( cfg.flags >> 5 ) & 0x1 )!= 0);
+	return select(0.,1., ( cfg.flags >> 3 & 0x1 )!= 0);
 }
 
 fn random(st : vec2<f32>) -> f32 {

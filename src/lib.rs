@@ -1,62 +1,43 @@
-// #![allow(unused)]
-
 use bevy::{
     asset::{embedded_asset, load_internal_asset},
     core_pipeline::core_2d::graph::{Core2d, Node2d},
     prelude::*,
     render::{
         extract_component::ExtractComponentPlugin,
-        extract_resource::ExtractResourcePlugin,
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::Source,
         Render, RenderApp, RenderSet,
     },
     time::common_conditions::on_timer,
-    window::WindowResized,
 };
-use size::ComputedSizeBuffer;
 use std::{path::PathBuf, time::Duration};
 
-mod common;
-mod composite;
-mod config;
+mod camera;
+mod cascade;
 mod constant;
-mod merge;
-mod mipmap;
 mod node;
 mod sdf;
-mod size;
-mod targets;
 
 pub mod prelude {
-    pub use super::common::Light2dCameraTag;
-    pub use super::config::{GiConfig, GiFlags};
+    pub use super::camera::{
+        GiFlags, Light2dCameraTag, RadianceCameraBundle, RadianceConfig, RadianceDebug,
+    };
     pub use super::sdf::{Emitter, Occluder, SdfShape};
-    pub use super::size::{ComputedSize, ResizeEvent};
-    pub use super::targets::RenderTargets;
     pub use super::LightPlugin;
 }
 
 #[derive(Default)]
-pub struct LightPlugin {
-    settings: config::GiConfig,
-}
+pub struct LightPlugin;
 
 impl Plugin for LightPlugin {
     fn build(&self, app: &mut App) {
         #[rustfmt::skip]
         app
-            .insert_resource(self.settings.clone())
             .add_plugins((
-                ExtractResourcePlugin::<targets::RenderTargets>::default(),
-                ExtractResourcePlugin::<config::GiConfig>::default(),
-                ExtractComponentPlugin::<common::Light2dCameraTag>::default(),
-            ))
-            .add_event::<size::ResizeEvent>()
-            .observe(size::resize)
-            .add_systems(PreStartup, size::on_startup)
-            .add_systems(Update, size::on_win_resize.run_if(on_event::<WindowResized>()),
-        );
+                ExtractComponentPlugin::<camera::Light2dCameraTag>::default(),
+                ExtractComponentPlugin::<camera::RadianceConfig>::default(),
+                ExtractComponentPlugin::<camera::RadianceDebug>::default(),
+            ));
 
         // adds some hot reloading for dev
         #[cfg(debug_assertions)]
@@ -71,25 +52,9 @@ impl Plugin for LightPlugin {
             "shaders/common.wgsl",
             Shader::from_wgsl
         );
-        // load_internal_asset!(
-        //     app,
-        //     constant::SHAPES_SHADER,
-        //     "shaders/shapes.wgsl",
-        //     Shader::from_wgsl
-        // );
-        // load_internal_asset!(
-        //     app,
-        //     constant::RAYMARCH_SHADER,
-        //     "shaders/raymarch.wgsl",
-        //     Shader::from_wgsl
-        // );
 
-        //embedd
-        // embedded_asset!(app, "shaders/merge.wgsl");
-        // embedded_asset!(app, "shaders/probes.wgsl");
         embedded_asset!(app, "shaders/sdf.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
-        embedded_asset!(app, "shaders/mipmap.wgsl");
         embedded_asset!(app, "shaders/cascade.wgsl");
         // ---------------
 
@@ -98,15 +63,14 @@ impl Plugin for LightPlugin {
         };
 
         render_app
-            .insert_resource(self.settings.clone())
-            .add_systems(ExtractSchedule, (sdf::extract_occluder, size::extract_size))
+            // .insert_resource(self.settings.clone())
+            .add_systems(ExtractSchedule, sdf::extract_occluder)
             .add_systems(
                 Render,
                 (
                     sdf::prepare_sdf_buffers,
-                    size::prepare_bindgroup,
-                    config::prepare,        // todo: run on change
-                    merge::prepare_uniform, // todo:run on change
+                    camera::prepare_config,
+                    camera::prepare_textures,
                 )
                     .in_set(RenderSet::Prepare),
             )
@@ -122,12 +86,7 @@ impl Plugin for LightPlugin {
         render_app
             .init_resource::<sdf::SdfPipeline>()
             .init_resource::<sdf::SdfBuffers>()
-            .init_resource::<ComputedSizeBuffer>()
-            .init_resource::<composite::CompositePipeline>()
-            .init_resource::<config::ConfigBuffer>()
-            .init_resource::<merge::MergePipeline>()
-            .init_resource::<merge::ProbeBuffer>()
-            .init_resource::<mipmap::MipMapPipeline>();
+            .init_resource::<cascade::CascadePipeline>();
     }
 }
 
