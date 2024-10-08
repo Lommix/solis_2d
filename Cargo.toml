@@ -32,3 +32,7 @@ dev = ["bevy/file_watcher", "bevy/embedded_watcher"]
 [[example]]
 name = "light"
 path = "examples/light.rs"
+
+[[example]]
+name = "simple"
+path = "examples/simple.rs"
