@@ -76,11 +76,11 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
         .anchor(egui::Align2::RIGHT_TOP, [0., 0.])
         .show(egui.ctx_mut(), |ui| {
             ui.label("probe stride");
-            ui.add(egui::Slider::new(&mut gi_config.probe_base, (2)..=16));
+            ui.add(egui::Slider::new(&mut gi_config.probe_base, (1)..=16));
             ui.label("cascade count");
             ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
             ui.label("interval");
-            ui.add(egui::Slider::new(&mut gi_config.interval, (0.1)..=10.));
+            ui.add(egui::Slider::new(&mut gi_config.interval, (0.1)..=1000.));
             ui.label("scale");
             ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
 
@@ -127,9 +127,12 @@ fn spawn_light(
         ));
 
         let color = Color::srgb(
-            rand::random::<f32>(),
-            rand::random::<f32>(),
-            rand::random::<f32>(),
+            0.8,
+            0.,
+            0.,
+            // rand::random::<f32>(),
+            // rand::random::<f32>(),
+            // rand::random::<f32>(),
         );
 
         emitter.color = color;

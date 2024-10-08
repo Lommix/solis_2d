@@ -18,10 +18,12 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let sqr_angular		= pow(2.,f32(in_probe.cascade_index));
 	let extent			= floor(vec2<f32>(cascade_size) / sqr_angular);
 	let probe			= vec4(coord % extent, floor(coord / extent));
-	let interval		= in_probe.cascade_interval * (1. - pow(4., f32(in_probe.cascade_index))/-4.);
 	let linear			= vec2(f32(in_probe.base) * pow(2.0, f32(in_probe.cascade_index )));
-	let limit			= (in_probe.cascade_interval * pow(4.0, f32(in_probe.cascade_index))) + length(linear * 4.0);
-	let origin			= (probe.xy + 0.5) * linear;
+	var interval		= in_probe.cascade_interval * (pow(4., f32(in_probe.cascade_index-1)));
+	var limit			= (in_probe.cascade_interval * pow(4.0, f32(in_probe.cascade_index)));
+	interval			= select( interval, 0., in_probe.cascade_index == 0);
+
+	let origin			= (probe.xy + .5) * linear;
 	let angular			= sqr_angular * sqr_angular * 4.0;
 	let index			= (probe.z + (probe.w * sqr_angular)) * 4.0;
 
@@ -83,11 +85,10 @@ fn merge(
 	var interpN1 = vec2(index % angularN1, floor(index / angularN1)) * extentN1;
 	interpN1 += clamp((probe * 0.5) + 0.25, vec2(0.5), extentN1 - 0.5);
 
-	let radianceN1 = textureSampleLevel(
+	let radianceN1 = textureSample(
 		last_cascade,
 		rad_sampler,
 		interpN1 * (1.0 / vec2<f32>(size)),
-		16.
 	);
 
 	return radiance + radianceN1;

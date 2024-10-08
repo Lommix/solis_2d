@@ -122,7 +122,7 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
         .anchor(egui::Align2::RIGHT_TOP, [0., 0.])
         .show(egui.ctx_mut(), |ui| {
             ui.label("probe stride");
-            ui.add(egui::Slider::new(&mut gi_config.probe_base, (2)..=16));
+            ui.add(egui::Slider::new(&mut gi_config.probe_base, (1)..=16));
             ui.label("cascade count");
             ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
             ui.label("interval");

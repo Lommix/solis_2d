@@ -41,7 +41,7 @@ impl Default for RadianceConfig {
             interval: 6.,
             scale_factor: 1.,
             cascade_count: 6,
-            probe_base: 2,
+            probe_base: 1,
         }
     }
 }
