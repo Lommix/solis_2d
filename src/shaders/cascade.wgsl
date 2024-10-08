@@ -13,16 +13,14 @@
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
-	let cascade_size	= in_cfg.scaled / in_probe.base;
+	let cascade_size	= in_cfg.scaled / in_cfg.probe_base;
 	let coord			= floor(vec2<f32>(cascade_size) * in.uv);
 	let sqr_angular		= pow(2.,f32(in_probe.cascade_index));
 	let extent			= floor(vec2<f32>(cascade_size) / sqr_angular);
 	let probe			= vec4(coord % extent, floor(coord / extent));
-	let linear			= vec2(f32(in_probe.base) * pow(2.0, f32(in_probe.cascade_index )));
-	var interval		= in_probe.cascade_interval * (pow(4., f32(in_probe.cascade_index-1)));
-	var limit			= (in_probe.cascade_interval * pow(4.0, f32(in_probe.cascade_index)));
-	interval			= select( interval, 0., in_probe.cascade_index == 0);
-
+	let linear			= vec2(f32(in_cfg.probe_base) * pow(2.0, f32(in_probe.cascade_index )));
+	let interval		= in_cfg.interval * (1. - pow(4., f32(in_probe.cascade_index)))/-3.;
+	let limit			= (in_cfg.interval * pow(4., f32(in_probe.cascade_index)));
 	let origin			= (probe.xy + .5) * linear;
 	let angular			= sqr_angular * sqr_angular * 4.0;
 	let index			= (probe.z + (probe.w * sqr_angular)) * 4.0;
@@ -52,14 +50,20 @@ fn march(
 
 	for(var i = 0; i < 16; i ++){
 		let ray = ( origin + ( delta * dst_traveled ));
-        sample = textureLoad(sdf_tex, vec2<u32>(ray),0);
+
+		let uv = vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
+		if uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1. {
+			return vec4(0.,0.,0.,1.);
+		}
+
+        sample = textureSample(sdf_tex, rad_sampler, uv);
 		dst_traveled += sample.a;
 
 		if (dst_traveled >= interval){
 			break;
 		}
 
-		if sample.a < 1.0 {
+		if sample.a < 0.1 {
 			return vec4(sample.rgb, 0.0);
 		}
 	}
@@ -74,9 +78,9 @@ fn merge(
 	probe:	vec2<f32>,
 ) -> vec4<f32> {
 
-	let size = in_cfg.scaled / in_probe.base;
+	let size = in_cfg.scaled / in_cfg.probe_base;
 
-	if (radiance.a == 0.0 || in_probe.cascade_index >= in_probe.cascade_count - 1){
+	if (radiance.a == 0.0 || in_probe.cascade_index >= in_cfg.cascade_count - 1){
 		return vec4(radiance.rgb, 1.0 - radiance.a);
 	}
 

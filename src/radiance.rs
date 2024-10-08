@@ -20,6 +20,8 @@ pub struct RadiancePipeline {
     pub cascade_id: CachedRenderPipelineId,
     pub composite_id: CachedRenderPipelineId,
     pub composite_layout: BindGroupLayout,
+    pub mipmap_id: CachedRenderPipelineId,
+    pub mipmap_layout: BindGroupLayout,
     pub radiance_sampler: Sampler,
     pub point_sampler: Sampler,
 }
@@ -29,9 +31,11 @@ impl FromWorld for RadiancePipeline {
         let render_device = world.resource::<RenderDevice>();
         let cascade_layout = create_cascade_layout(&render_device);
         let composite_layout = create_composite_layout(&render_device);
+        let mipmap_layout = create_mipmap_layout(&render_device);
         let server = world.resource_ref::<AssetServer>();
         let cascade_shader = server.load("embedded://lommix_light/shaders/cascade.wgsl");
         let composite_shader = server.load("embedded://lommix_light/shaders/composite.wgsl");
+        let mipmap_shader = server.load("embedded://lommix_light/shaders/mipmap.wgsl");
         let cache = world.resource::<PipelineCache>();
 
         let cascade_id = cache.queue_render_pipeline(RenderPipelineDescriptor {
@@ -74,6 +78,26 @@ impl FromWorld for RadiancePipeline {
             }),
         });
 
+        let mipmap_id = cache.queue_render_pipeline(RenderPipelineDescriptor {
+            label: Some("mipmap_pipeline".into()),
+            layout: vec![mipmap_layout.clone()],
+            push_constant_ranges: vec![],
+            vertex: fullscreen_shader_vertex_state(),
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+            fragment: Some(FragmentState {
+                shader: mipmap_shader,
+                shader_defs: vec![],
+                entry_point: "fragment".into(),
+                targets: vec![Some(ColorTargetState {
+                    format: CASCADE_FORMAT,
+                    blend: None,
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+        });
+
         let radiance_sampler = render_device.create_sampler(&SamplerDescriptor {
             label: Some("radiance sampler"),
             mag_filter: FilterMode::Linear,
@@ -86,6 +110,8 @@ impl FromWorld for RadiancePipeline {
             cascade_id,
             cascade_layout,
             composite_id,
+            mipmap_id,
+            mipmap_layout,
             composite_layout,
             radiance_sampler,
             point_sampler: render_device.create_sampler(&SamplerDescriptor::default()),
@@ -106,6 +132,8 @@ fn create_composite_layout(render_device: &RenderDevice) -> BindGroupLayout {
                 //merge tex 0
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 //merge tex 1
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                //mipmap tex
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 //linear sample
                 sampler(SamplerBindingType::Filtering),
@@ -136,14 +164,21 @@ fn create_cascade_layout(render_device: &RenderDevice) -> BindGroupLayout {
     );
 }
 
+fn create_mipmap_layout(render_device: &RenderDevice) -> BindGroupLayout {
+    return render_device.create_bind_group_layout(
+        "mipmap_layout",
+        &BindGroupLayoutEntries::sequential(
+            ShaderStages::FRAGMENT,
+            (
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                uniform_buffer::<GiGpuConfig>(false),
+            ),
+        ),
+    );
+}
+
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct Probe {
-    /// max cascades @todo: redundant
-    pub cascade_count: u32,
     /// index of current
     pub cascade_index: u32,
-    /// interval
-    pub cascade_interval: f32,
-    /// min probe size
-    pub probe_base: u32,
 }

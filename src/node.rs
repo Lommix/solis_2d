@@ -44,7 +44,7 @@ impl render_graph::ViewNode for LightNode {
         let sdf_pipeline = world.resource::<SdfPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let sdf_buffers = world.resource::<SdfBuffers>();
-        let cascade_pipeline = world.resource::<RadiancePipeline>();
+        let radiance_pipline = world.resource::<RadiancePipeline>();
         let post_process = view_target.post_process_write();
 
         // ------------------------------------
@@ -56,14 +56,21 @@ impl render_graph::ViewNode for LightNode {
         };
 
         let Some(composite_render_pipeline) =
-            pipeline_cache.get_render_pipeline(cascade_pipeline.composite_id)
+            pipeline_cache.get_render_pipeline(radiance_pipline.composite_id)
         else {
             // warn!("composite pipeline missing");
             return Ok(());
         };
 
         let Some(cascade_render_pipeline) =
-            pipeline_cache.get_render_pipeline(cascade_pipeline.cascade_id)
+            pipeline_cache.get_render_pipeline(radiance_pipline.cascade_id)
+        else {
+            // warn!("merge pipeline missing")
+            return Ok(());
+        };
+
+        let Some(mipmap_render_pipeline) =
+            pipeline_cache.get_render_pipeline(radiance_pipline.mipmap_id)
         else {
             // warn!("merge pipeline missing")
             return Ok(());
@@ -138,11 +145,11 @@ impl render_graph::ViewNode for LightNode {
 
             let cascade_bind_group = render_context.render_device().create_bind_group(
                 Some("cascade_bind_group".into()),
-                &cascade_pipeline.cascade_layout,
+                &radiance_pipline.cascade_layout,
                 &BindGroupEntries::sequential((
                     &radiance_targets.sdf.default_view,
                     last_target,
-                    &cascade_pipeline.radiance_sampler,
+                    &radiance_pipline.radiance_sampler,
                     gi_config_binding.clone(),
                     probe_binding.clone(),
                 )),
@@ -167,18 +174,51 @@ impl render_graph::ViewNode for LightNode {
         }
 
         // ---------------------------------------------------------------
+        // mipmap
+        let mipmap_bind_group = render_context.render_device().create_bind_group(
+            Some("mipmap_bind_group".into()),
+            &radiance_pipline.mipmap_layout,
+            &BindGroupEntries::sequential((
+                if config.cascade_count % 2 == 0 {
+                    &radiance_targets.merge0.default_view
+                } else {
+                    &radiance_targets.merge1.default_view
+                },
+                gi_config_binding.clone(),
+            )),
+        );
+        {
+            let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
+                label: Some("mipmap_pass".into()),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &radiance_targets.mipmap.default_view,
+                    resolve_target: None,
+                    ops: Operations::default(),
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            render_pass.set_render_pipeline(mipmap_render_pipeline);
+            render_pass.set_bind_group(0, &mipmap_bind_group, &[]);
+            render_pass.draw(0..3, 0..1);
+        }
+
+        // ---------------------------------------------------------------
         // composite
 
         let composite_bind_group = render_context.render_device().create_bind_group(
             Some("composite_bind_group".into()),
-            &cascade_pipeline.composite_layout,
+            &radiance_pipline.composite_layout,
             &BindGroupEntries::sequential((
                 post_process.source,
                 &radiance_targets.sdf.default_view,
                 &radiance_targets.merge0.default_view,
                 &radiance_targets.merge1.default_view,
-                &cascade_pipeline.radiance_sampler,
-                &cascade_pipeline.point_sampler,
+                &radiance_targets.mipmap.default_view,
+                &radiance_pipline.radiance_sampler,
+                &radiance_pipline.point_sampler,
                 gi_config_binding,
             )),
         );

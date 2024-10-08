@@ -5,20 +5,18 @@ const TAU:f32 = PI * 2.;
 const EPSILON: f32 = 4.88e-04;
 
 struct Probe {
-    cascade_count: u32,
     cascade_index: u32,
-    cascade_interval: f32,
-    base: u32,
 }
 
 struct GiConfig{
 	native: vec2<u32>,
 	scaled: vec2<u32>,
+	probe_base: u32,
+	interval: f32,
 	scale: f32,
 	cascade_count: u32,
 	flags: u32,
 }
-
 
 fn debug_sdf(cfg: GiConfig) -> f32{
 	return select(0.,1., (( cfg.flags & 0x1 )!= 0));

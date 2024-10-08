@@ -57,6 +57,8 @@ pub struct RadianceDebug(pub GiFlags);
 pub struct GiGpuConfig {
     native: UVec2,
     scaled: UVec2,
+    probe_base: u32,
+    interval: f32,
     scale: f32,
     cascade_count: u32,
     flags: u32,
@@ -74,6 +76,7 @@ pub struct RadianceTargets {
     pub sdf: CachedTexture,
     pub merge0: CachedTexture,
     pub merge1: CachedTexture,
+    pub mipmap: CachedTexture,
 }
 
 pub(crate) fn prepare_config(
@@ -94,6 +97,8 @@ pub(crate) fn prepare_config(
         config.cascade_count = cfg.cascade_count;
         config.scale = cfg.scale_factor;
         config.flags = flags.map(|f| f.0.bits()).unwrap_or_default();
+        config.probe_base = cfg.probe_base;
+        config.interval = cfg.interval;
         config_buffer.write_buffer(&render_device, &render_queue);
 
         let mut probe_buffer = DynamicUniformBuffer::default();
@@ -101,10 +106,7 @@ pub(crate) fn prepare_config(
         for c in 0..cfg.cascade_count {
             let index = cfg.cascade_count - 1 - c;
             let probe = Probe {
-                cascade_count: cfg.cascade_count,
                 cascade_index: index,
-                cascade_interval: cfg.interval,
-                probe_base: cfg.probe_base,
             };
             probe_offsets.push(probe_buffer.push(&probe));
         }
@@ -125,13 +127,12 @@ pub(crate) fn prepare_textures(
     mut cmd: Commands,
 ) {
     views.iter().for_each(|(entity, view_target, cfg)| {
-        let mut size = view_target.main_texture().size();
-        size.depth_or_array_layers = 1;
-
-        size.width = (size.width as f32 / cfg.scale_factor) as u32;
-        size.height = (size.height as f32 / cfg.scale_factor) as u32;
-        size.width += size.width % 2;
-        size.height += size.height % 2;
+        let mut scaled_size = view_target.main_texture().size();
+        scaled_size.depth_or_array_layers = 1;
+        scaled_size.width = (scaled_size.width as f32 / cfg.scale_factor) as u32;
+        scaled_size.height = (scaled_size.height as f32 / cfg.scale_factor) as u32;
+        scaled_size.width += scaled_size.width % 2;
+        scaled_size.height += scaled_size.height % 2;
 
         let mut new_texture = |extent: Extent3d| {
             texture_cache.get(
@@ -149,14 +150,23 @@ pub(crate) fn prepare_textures(
             )
         };
 
-        let merge0 = new_texture(size);
-        let merge1 = new_texture(size);
-        let sdf = new_texture(size);
+        let merge0 = new_texture(scaled_size);
+        let merge1 = new_texture(scaled_size);
+        let sdf = new_texture(scaled_size);
+
+        let mipmap_size = Extent3d {
+            width: (scaled_size.width / cfg.probe_base),
+            height: (scaled_size.height / cfg.probe_base),
+            depth_or_array_layers: 1,
+        };
+
+        let mipmap = new_texture(mipmap_size);
 
         cmd.entity(entity).insert(RadianceTargets {
             merge0,
             merge1,
             sdf,
+            mipmap,
         });
     });
 }

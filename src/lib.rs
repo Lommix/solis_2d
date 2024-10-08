@@ -51,6 +51,7 @@ impl Plugin for LightPlugin {
         embedded_asset!(app, "shaders/sdf.wgsl");
         embedded_asset!(app, "shaders/composite.wgsl");
         embedded_asset!(app, "shaders/cascade.wgsl");
+        embedded_asset!(app, "shaders/mipmap.wgsl");
         // ---------------
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
