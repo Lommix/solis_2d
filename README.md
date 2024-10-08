@@ -1,8 +1,10 @@
-# future-gi-crate
+# future-gi-crate solis-2d
+
+![title img](docs/screen.png)
+
 
 ### 2D Global Illumination with Radiance Cascade
 
-![title img](docs/screen.png)
 
 Radiance Cascade Global Illumination following latest
 optimization strategies without compute pipeline.
@@ -16,3 +18,5 @@ Aiming to be compatible with all targets.
 ```bash
 cargo run --example light --features=dev
 ```
+
+https://github.com/user-attachments/assets/5c98a8c4-ae5b-4019-b147-ceba065f074b
