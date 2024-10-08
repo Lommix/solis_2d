@@ -1,4 +1,4 @@
-use crate::{view::GiGpuConfig, constant::CASCADE_FORMAT};
+use crate::{constant::CASCADE_FORMAT, view::GiGpuConfig};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
@@ -14,7 +14,6 @@ use bevy::{
     },
 };
 
-/// folding the cascades back into one
 #[derive(Resource)]
 pub struct RadiancePipeline {
     pub cascade_layout: BindGroupLayout,
@@ -78,6 +77,7 @@ impl FromWorld for RadiancePipeline {
         let radiance_sampler = render_device.create_sampler(&SamplerDescriptor {
             label: Some("radiance sampler"),
             mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Linear,
             mipmap_filter: FilterMode::Linear,
             ..default()
         });
@@ -138,7 +138,7 @@ fn create_cascade_layout(render_device: &RenderDevice) -> BindGroupLayout {
 
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct Probe {
-    /// num of cascades
+    /// max cascades @todo: redundant
     pub cascade_count: u32,
     /// index of current
     pub cascade_index: u32,

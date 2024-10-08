@@ -1,3 +1,4 @@
+use crate::{constant::CASCADE_FORMAT, radiance::Probe};
 use bevy::{
     prelude::*,
     render::{
@@ -12,12 +13,8 @@ use bevy::{
     },
 };
 
-use crate::{constant::CASCADE_FORMAT, radiance::Probe};
-
-//@dep
-#[derive(Component, Default, ExtractComponent, Clone, Copy)]
-pub struct Light2dCameraTag;
-
+/// screen space radiance cascade
+/// 2D camera bundle
 #[derive(Bundle, Default)]
 pub struct RadianceCameraBundle {
     pub camera_bundle: Camera2dBundle,
@@ -25,11 +22,16 @@ pub struct RadianceCameraBundle {
     pub radiance_debug: RadianceDebug,
 }
 
+/// radiance cascade configuration
 #[derive(Component, ExtractComponent, Clone)]
 pub struct RadianceConfig {
+    /// ray base range
     pub interval: f32,
+    /// screen space scale factor
     pub scale_factor: f32,
+    /// max cascade count
     pub cascade_count: u32,
+    /// probe base, base*base = angular resolution
     pub probe_base: u32,
 }
 
@@ -44,6 +46,7 @@ impl Default for RadianceConfig {
     }
 }
 
+/// debug component, enable debug flags
 #[derive(Component, ExtractComponent, Clone, Default, Deref, DerefMut)]
 pub struct RadianceDebug(pub GiFlags);
 

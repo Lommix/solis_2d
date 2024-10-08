@@ -20,9 +20,7 @@ mod view;
 
 pub mod prelude {
     pub use super::sdf::{Emitter, Occluder, SdfShape};
-    pub use super::view::{
-        GiFlags, Light2dCameraTag, RadianceCameraBundle, RadianceConfig, RadianceDebug,
-    };
+    pub use super::view::{GiFlags, RadianceCameraBundle, RadianceConfig, RadianceDebug};
     pub use super::LightPlugin;
 }
 
@@ -31,13 +29,10 @@ pub struct LightPlugin;
 
 impl Plugin for LightPlugin {
     fn build(&self, app: &mut App) {
-        #[rustfmt::skip]
-        app
-            .add_plugins((
-                ExtractComponentPlugin::<view::Light2dCameraTag>::default(),
-                ExtractComponentPlugin::<view::RadianceConfig>::default(),
-                ExtractComponentPlugin::<view::RadianceDebug>::default(),
-            ));
+        app.add_plugins((
+            ExtractComponentPlugin::<view::RadianceConfig>::default(),
+            ExtractComponentPlugin::<view::RadianceDebug>::default(),
+        ));
 
         // adds some hot reloading for dev
         #[cfg(debug_assertions)]
@@ -90,7 +85,7 @@ impl Plugin for LightPlugin {
 }
 
 // this is a temp fix for hot reloading while development, since
-// embedded assets do not work with bevy's wgsl imports.
+// embedded assets do not work with bevy's WGSL imports.
 fn watch(mut shaders: ResMut<Assets<Shader>>) {
     let currrent_file = PathBuf::from(file!());
     let current_dir = currrent_file.parent().unwrap();
@@ -110,6 +105,7 @@ fn watch_assset(shaders: &mut Assets<Shader>, path: PathBuf, handle: Handle<Shad
     let systime = meta.modified().unwrap();
     let since = systime.elapsed().unwrap();
 
+    // stupid, but works
     if since > Duration::from_millis(50) {
         return;
     }

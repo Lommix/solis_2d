@@ -1,4 +1,4 @@
-use crate::{view::GiGpuConfig, constant::SDF_FORMAT};
+use crate::{constant::SDF_FORMAT, view::GiGpuConfig};
 use bevy::{
     core_pipeline::fullscreen_vertex_shader::fullscreen_shader_vertex_state,
     prelude::*,
@@ -154,8 +154,8 @@ pub fn extract_occluder(
                 intensity: emitter.intensity,
             }),
             SdfShape::Rect(half_extend) => {
-                let vec_a = transform.right().truncate(); // Assuming 'right' gives you a Vec3
-                let vec_b = Vec2::X; // Vec2::X is the unit vector along the x-axis in 2D
+                let vec_a = transform.right().truncate();
+                let vec_b = Vec2::X;
                 let full_angle = vec_a.y.atan2(vec_a.x) - vec_b.y.atan2(vec_b.x);
 
                 sdf_rects.push(GpuRect {

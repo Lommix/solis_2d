@@ -2,6 +2,7 @@
 name = "lommix_light"
 authors = ["Lorenz Mielke"]
 description = "2D global illumination with optimized radiance cascade"
+keywords = ["illumination", "bevy", "light", "gamedev", "radiance cascade"]
 version = "0.1.0"
 edition = "2021"
 
