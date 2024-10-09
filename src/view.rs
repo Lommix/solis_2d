@@ -33,6 +33,8 @@ pub struct RadianceConfig {
     pub cascade_count: u32,
     /// probe base, base*base = angular resolution
     pub probe_base: u32,
+    /// probe base, base*base = angular resolution
+    pub edge_hightlight: f32,
 }
 
 impl Default for RadianceConfig {
@@ -42,6 +44,7 @@ impl Default for RadianceConfig {
             scale_factor: 1.,
             cascade_count: 6,
             probe_base: 1,
+            edge_hightlight: 1.,
         }
     }
 }
@@ -62,6 +65,7 @@ pub struct GiGpuConfig {
     scale: f32,
     cascade_count: u32,
     flags: u32,
+    edge_hightlight: f32,
 }
 
 #[derive(Component, Default)]
@@ -99,6 +103,7 @@ pub(crate) fn prepare_config(
         config.flags = flags.map(|f| f.0.bits()).unwrap_or_default();
         config.probe_base = cfg.probe_base;
         config.interval = cfg.interval;
+        config.edge_hightlight = cfg.edge_hightlight;
         config_buffer.write_buffer(&render_device, &render_queue);
 
         let mut probe_buffer = DynamicUniformBuffer::default();
@@ -153,10 +158,9 @@ pub(crate) fn prepare_textures(
         let merge0 = new_texture(scaled_size);
         let merge1 = new_texture(scaled_size);
         let sdf = new_texture(scaled_size);
-
         let mipmap_size = Extent3d {
-            width: (scaled_size.width / cfg.probe_base),
-            height: (scaled_size.height / cfg.probe_base),
+            width: (scaled_size.width + cfg.probe_base + 1) / cfg.probe_base,
+            height: (scaled_size.height + cfg.probe_base + 1) / cfg.probe_base,
             depth_or_array_layers: 1,
         };
 

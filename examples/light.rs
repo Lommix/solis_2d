@@ -12,7 +12,7 @@ pub fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "radiant cascade".into(),
+                    title: "radiance cascade".into(),
                     ..default()
                 }),
                 ..default()
@@ -114,7 +114,7 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
 }
 
 fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut egui: EguiContexts) {
-    let Ok((mut gi_config, mut gi_debug)) = gi_config.get_single_mut() else {
+    let Ok((mut cfg, mut debug)) = gi_config.get_single_mut() else {
         return;
     };
 
@@ -122,18 +122,20 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
         .anchor(egui::Align2::RIGHT_TOP, [0., 0.])
         .show(egui.ctx_mut(), |ui| {
             ui.label("probe stride");
-            ui.add(egui::Slider::new(&mut gi_config.probe_base, (1)..=16));
+            ui.add(egui::Slider::new(&mut cfg.probe_base, (1)..=16));
             ui.label("cascade count");
-            ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
+            ui.add(egui::Slider::new(&mut cfg.cascade_count, (2)..=8));
             ui.label("interval");
-            ui.add(egui::Slider::new(&mut gi_config.interval, (0.1)..=10.));
+            ui.add(egui::Slider::new(&mut cfg.interval, (0.1)..=10.));
             ui.label("scale");
-            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
+            ui.add(egui::Slider::new(&mut cfg.scale_factor, (0.25)..=10.));
+            ui.label("edge highlight");
+            ui.add(egui::Slider::new(&mut cfg.edge_hightlight, (0.0)..=100.));
 
-            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_debug, "SDF");
-            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_debug, "VORONOI");
-            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut gi_debug, "MERGE0");
-            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut gi_debug, "MERGE1");
+            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut debug, "SDF");
+            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut debug, "VORONOI");
+            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut debug, "MERGE0");
+            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut debug, "MERGE1");
         });
 }
 

@@ -14,8 +14,7 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let probe_size = in_cfg.probe_base * in_cfg.probe_base;
 
 	for (var i = 0; i < i32(probe_size); i++){
-
-		let offset = vec2(i% i32(in_cfg.probe_base), i/i32(in_cfg.probe_base));
+		let offset = vec2(i % i32(in_cfg.probe_base), i / i32(in_cfg.probe_base));
 		out += textureLoad(cascade0, vec2<i32>(cell * i32(in_cfg.probe_base)) + offset, 0);
 	}
 

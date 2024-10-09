@@ -10,7 +10,7 @@ pub fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "radiant cascade".into(),
+                    title: "radiance cascade".into(),
                     ..default()
                 }),
                 ..default()
