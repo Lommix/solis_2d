@@ -125,7 +125,7 @@ pub struct SdfBuffers {
     pub rect_buffer: StorageBuffer<GpuRectBuffer>,
 }
 
-pub fn extract_occluder(
+pub fn extract_emitter(
     occluders: Extract<
         Query<(
             &Emitter,
@@ -145,7 +145,6 @@ pub fn extract_occluder(
         }
 
         let transform = global.compute_transform();
-
         match emitter.shape {
             SdfShape::Circle(radius) => sdf_circles.push(GpuCirlce {
                 radius,

@@ -6,10 +6,12 @@ use bevy::{
         extract_component::ExtractComponentPlugin,
         render_graph::{RenderGraphApp, ViewNodeRunner},
         render_resource::Source,
+        view::{check_visibility, VisibilitySystems},
         Render, RenderApp, RenderSet,
     },
     time::common_conditions::on_timer,
 };
+use sdf::Emitter;
 use std::{path::PathBuf, time::Duration};
 
 mod constant;
@@ -38,6 +40,10 @@ impl Plugin for LightPlugin {
         #[cfg(debug_assertions)]
         app.add_systems(Last, watch.run_if(on_timer(Duration::from_millis(50))));
 
+        app.add_systems(
+            PostUpdate,
+            check_visibility::<With<Emitter>>.in_set(VisibilitySystems::CheckVisibility),
+        );
         // ---------------
         // fix later
         // bevy's wgsl definition do not work with embedded assets
@@ -59,7 +65,7 @@ impl Plugin for LightPlugin {
         };
 
         render_app
-            .add_systems(ExtractSchedule, sdf::extract_occluder)
+            .add_systems(ExtractSchedule, sdf::extract_emitter)
             .add_systems(
                 Render,
                 (

@@ -97,7 +97,6 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
         transform: Transform::from_translation(Vec3::new(0., 0., 0.)),
         ..default()
     },));
-
     cmd.spawn((
         Emitter {
             intensity: 1.,

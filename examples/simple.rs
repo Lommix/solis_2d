@@ -47,8 +47,7 @@ fn setup(mut cmd: Commands) {
     });
 
     cmd.spawn((
-        SpriteBundle::default(),
-        Aabb::default(),
+        SpatialBundle::default(),
         Emitter {
             intensity: 1.,
             color: Color::BLACK,
@@ -61,9 +60,8 @@ fn setup(mut cmd: Commands) {
             color: Color::WHITE,
             shape: SdfShape::Circle(200.),
         },
-        Aabb::default(),
         FollowMouse,
-        SpriteBundle::default(),
+        SpatialBundle::default(),
     ));
 }
 
@@ -83,6 +81,8 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
             ui.add(egui::Slider::new(&mut gi_config.interval, (0.1)..=1000.));
             ui.label("scale");
             ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
+            ui.label("edge highlight");
+            ui.add(egui::Slider::new(&mut gi_config.edge_hightlight, (0.)..=10.));
 
             flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_debug, "SDF");
             flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_debug, "VORONOI");
@@ -127,8 +127,7 @@ fn spawn_light(
         ));
 
         let color = Color::srgb(
-            0.8,
-            0.,
+            0.8, 0.,
             0.,
             // rand::random::<f32>(),
             // rand::random::<f32>(),
