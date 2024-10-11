@@ -22,7 +22,7 @@ mod view;
 
 pub mod prelude {
     pub use super::sdf::{Emitter, Occluder, SdfShape};
-    pub use super::view::{GiFlags, RadianceCameraBundle, RadianceConfig, RadianceDebug};
+    pub use super::view::{GiFlags, RadianceCameraBundle, NormalTarget, RadianceConfig, RadianceDebug};
     pub use super::LightPlugin;
 }
 
@@ -34,6 +34,7 @@ impl Plugin for LightPlugin {
         app.add_plugins((
             ExtractComponentPlugin::<view::RadianceConfig>::default(),
             ExtractComponentPlugin::<view::RadianceDebug>::default(),
+            ExtractComponentPlugin::<view::NormalTarget>::default(),
         ));
 
         // adds some hot reloading for dev

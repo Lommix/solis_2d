@@ -3,6 +3,15 @@ use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     input::mouse::MouseWheel,
     prelude::*,
+    render::{
+        camera::RenderTarget,
+        render_resource::{
+            Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+        },
+        texture::ImageSampler,
+        view::{RenderLayers, ViewTarget},
+    },
+    window::WindowResized,
 };
 use bevy_egui::*;
 use lommix_light::prelude::*;
@@ -34,6 +43,7 @@ pub fn main() {
                 config,
                 diagnostics,
                 monitor,
+                sync_size,
             ),
         )
         .run();
@@ -45,6 +55,9 @@ struct Spin(f32);
 #[derive(Component)]
 struct FollowMouse;
 
+#[derive(Component)]
+struct MainCamera;
+
 fn monitor(diagnostics: Res<DiagnosticsStore>) {
     let Some(_fps) = diagnostics
         .get(&bevy::diagnostic::FrameTimeDiagnosticsPlugin::FRAME_TIME)
@@ -55,21 +68,85 @@ fn monitor(diagnostics: Res<DiagnosticsStore>) {
     };
 }
 
-fn setup(mut cmd: Commands, server: Res<AssetServer>) {
-    cmd.spawn(RadianceCameraBundle {
-        camera_bundle: Camera2dBundle {
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
-                .looking_at(Vec3::default(), Vec3::Y),
-            camera: Camera {
-                clear_color: Color::BLACK.into(),
-                hdr: true,
+fn create_image(size: Vec2) -> Image {
+    let size = Extent3d {
+        width: size.x as u32,
+        height: size.y as u32,
+        depth_or_array_layers: 1,
+    };
+
+    let mut image = Image {
+        texture_descriptor: TextureDescriptor {
+            label: None,
+            size,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8UnormSrgb,
+            mip_level_count: 1,
+            sample_count: 1,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        },
+        sampler: ImageSampler::nearest(),
+        ..default()
+    };
+    image.resize(size);
+    image
+}
+
+// since the normals are rendered to a texture with
+// another camera, we have to sync the target size with
+// the current window size by hand
+fn sync_size(
+    mut events: EventReader<WindowResized>,
+    normals: Query<&NormalTarget>,
+    window: Query<&Window>,
+    mut images: ResMut<Assets<Image>>,
+) {
+    if events.read().count() == 0 {
+        return;
+    }
+
+    let Ok(win_size) = window.get_single().map(|win| win.size()) else {
+        return;
+    };
+
+    info!("resizing window");
+    normals.iter().for_each(|n| {
+        images.insert(&n.0, create_image(win_size));
+    });
+}
+
+fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<Image>>) {
+    let image_handle = images.add(create_image(Vec2::new(1024., 1024.)));
+    cmd.spawn((
+        RadianceCameraBundle {
+            camera_bundle: Camera2dBundle {
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
+                    .looking_at(Vec3::default(), Vec3::Y),
+                camera: Camera {
+                    clear_color: Color::BLACK.into(),
+                    hdr: true,
+                    ..default()
+                },
+                tonemapping: Tonemapping::AcesFitted,
                 ..default()
             },
-            tonemapping: Tonemapping::AcesFitted,
+            radiance_debug: RadianceDebug::NORMALS,
             ..default()
         },
-        ..default()
-    });
+        MainCamera,
+        NormalTarget(image_handle.clone()),
+    ));
+    cmd.spawn((
+        Camera2dBundle {
+            camera: Camera {
+                target: RenderTarget::Image(image_handle),
+                ..default()
+            },
+            ..default()
+        },
+        RenderLayers::layer(3),
+    ));
 
     for x in -4..=8 {
         for y in -4..=8 {
@@ -88,15 +165,31 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
             ));
         }
     }
-    cmd.spawn((SpriteBundle {
-        sprite: Sprite {
-            custom_size: Some(Vec2::splat(2000.)),
-            ..default()
-        },
-        texture: server.load("box.png"),
-        transform: Transform::from_translation(Vec3::new(0., 0., 0.)),
-        ..default()
-    },));
+
+    let map_size = 8;
+    for x in -map_size..map_size {
+        for y in -map_size..map_size {
+            let ox = x as f32 * 256.;
+            let oy = y as f32 * 256.;
+
+            cmd.spawn(SpriteBundle {
+                sprite: Sprite { ..default() },
+                texture: server.load("tile/tile_1.png"),
+                transform: Transform::from_translation(Vec3::new(ox, oy, 0.)),
+                ..default()
+            });
+            cmd.spawn((
+                SpriteBundle {
+                    sprite: Sprite { ..default() },
+                    texture: server.load("tile/tile_n.png"),
+                    transform: Transform::from_translation(Vec3::new(ox, oy, 0.)),
+                    ..default()
+                },
+                RenderLayers::layer(3),
+            ));
+        }
+    }
+
     cmd.spawn((
         Emitter {
             intensity: 1.,
@@ -130,6 +223,8 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
             ui.add(egui::Slider::new(&mut cfg.scale_factor, (0.25)..=10.));
             ui.label("edge highlight");
             ui.add(egui::Slider::new(&mut cfg.edge_hightlight, (0.0)..=100.));
+            ui.label("light hight");
+            ui.add(egui::Slider::new(&mut cfg.light_z, (-5.)..=5.));
 
             flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut debug, "SDF");
             flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut debug, "VORONOI");
@@ -312,29 +407,27 @@ fn scroll(
 }
 
 fn move_camera(mut camera: Query<&mut Transform, With<Camera>>, inputs: Res<ButtonInput<KeyCode>>) {
-    let Ok(mut transform) = camera.get_single_mut() else {
-        return;
-    };
+    camera.iter_mut().for_each(|mut transform| {
+        transform.translation += Vec3::new(
+            (inputs.pressed(KeyCode::ArrowRight) as i32 - inputs.pressed(KeyCode::ArrowLeft) as i32)
+                as f32,
+            (inputs.pressed(KeyCode::ArrowUp) as i32 - inputs.pressed(KeyCode::ArrowDown) as i32)
+                as f32,
+            0.,
+        ) * 2.;
 
-    transform.translation += Vec3::new(
-        (inputs.pressed(KeyCode::ArrowRight) as i32 - inputs.pressed(KeyCode::ArrowLeft) as i32)
-            as f32,
-        (inputs.pressed(KeyCode::ArrowUp) as i32 - inputs.pressed(KeyCode::ArrowDown) as i32)
-            as f32,
-        0.,
-    ) * 2.;
-
-    if inputs.just_pressed(KeyCode::KeyO) {
-        transform.scale += Vec3::splat(0.05);
-    }
-    if inputs.just_pressed(KeyCode::KeyI) {
-        transform.scale -= Vec3::splat(0.05);
-    }
+        if inputs.just_pressed(KeyCode::KeyO) {
+            transform.scale += Vec3::splat(0.05);
+        }
+        if inputs.just_pressed(KeyCode::KeyI) {
+            transform.scale -= Vec3::splat(0.05);
+        }
+    });
 }
 
 fn move_light(
     window: Query<&Window>,
-    camera: Query<Entity, With<Camera2d>>,
+    camera: Query<Entity, (With<Camera2d>, With<MainCamera>)>,
     light: Query<Entity, With<FollowMouse>>,
     mut transforms: Query<&mut Transform>,
 ) {

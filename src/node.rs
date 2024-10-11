@@ -1,18 +1,20 @@
 use crate::{
     radiance::RadiancePipeline,
     sdf::{SdfBuffers, SdfPipeline},
-    view::{RadianceBuffers, RadianceConfig, RadianceTargets},
+    view::{NormalTarget, RadianceBuffers, RadianceConfig, RadianceTargets},
 };
 use bevy::{
     ecs::{query::QueryItem, system::lifetimeless::Read},
     prelude::*,
     render::{
+        render_asset::RenderAssets,
         render_graph::{self, NodeRunError, RenderGraphContext, RenderLabel},
         render_resource::{
             BindGroupEntries, Operations, PipelineCache, RenderPassColorAttachment,
             RenderPassDescriptor,
         },
         renderer::RenderContext,
+        texture::{FallbackImage, GpuImage},
         view::{ViewTarget, ViewUniformOffset, ViewUniforms},
     },
 };
@@ -29,13 +31,14 @@ impl render_graph::ViewNode for LightNode {
         Read<RadianceBuffers>,
         Read<RadianceTargets>,
         Read<RadianceConfig>,
+        Option<Read<NormalTarget>>,
     );
 
     fn run<'w>(
         &self,
         _graph: &mut RenderGraphContext,
         render_context: &mut RenderContext<'w>,
-        (view_offset, view_target, radiance_buffers, radiance_targets, config): QueryItem<
+        (view_offset, view_target, radiance_buffers, radiance_targets, config, normal): QueryItem<
             'w,
             Self::ViewQuery,
         >,
@@ -46,6 +49,13 @@ impl render_graph::ViewNode for LightNode {
         let sdf_buffers = world.resource::<SdfBuffers>();
         let radiance_pipline = world.resource::<RadiancePipeline>();
         let post_process = view_target.post_process_write();
+        let gpu_imges = world.resource::<RenderAssets<GpuImage>>();
+        let fallback_image = world.resource::<FallbackImage>();
+
+        let normal_target = normal
+            .map(|n| gpu_imges.get(&n.0))
+            .flatten()
+            .unwrap_or(&fallback_image.d2);
 
         // ------------------------------------
         // load piplines
@@ -149,6 +159,7 @@ impl render_graph::ViewNode for LightNode {
                 &BindGroupEntries::sequential((
                     &radiance_targets.sdf.default_view,
                     last_target,
+                    &normal_target.texture_view,
                     &radiance_pipline.radiance_sampler,
                     gi_config_binding.clone(),
                     probe_binding.clone(),
@@ -217,6 +228,7 @@ impl render_graph::ViewNode for LightNode {
                 &radiance_targets.merge0.default_view,
                 &radiance_targets.merge1.default_view,
                 &radiance_targets.mipmap.default_view,
+                &normal_target.texture_view,
                 &radiance_pipline.radiance_sampler,
                 &radiance_pipline.point_sampler,
                 gi_config_binding,

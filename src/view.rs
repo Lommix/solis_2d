@@ -33,8 +33,10 @@ pub struct RadianceConfig {
     pub cascade_count: u32,
     /// probe base, base*base = angular resolution
     pub probe_base: u32,
-    /// probe base, base*base = angular resolution
+    /// highlighting edges
     pub edge_hightlight: f32,
+    /// light z pos
+    pub light_z: f32,
 }
 
 impl Default for RadianceConfig {
@@ -45,6 +47,7 @@ impl Default for RadianceConfig {
             cascade_count: 6,
             probe_base: 1,
             edge_hightlight: 1.,
+            light_z: 2.,
         }
     }
 }
@@ -52,6 +55,10 @@ impl Default for RadianceConfig {
 /// debug component, enable debug flags
 #[derive(Component, ExtractComponent, Clone, Default, Deref, DerefMut)]
 pub struct RadianceDebug(pub GiFlags);
+
+impl RadianceDebug {
+    pub const NORMALS: RadianceDebug = RadianceDebug(GiFlags::APPLY_NORMALS);
+}
 
 // ------------------------------
 // render world
@@ -66,6 +73,7 @@ pub struct GiGpuConfig {
     cascade_count: u32,
     flags: u32,
     edge_hightlight: f32,
+    light_z: f32,
 }
 
 #[derive(Component, Default)]
@@ -82,6 +90,9 @@ pub struct RadianceTargets {
     pub merge1: CachedTexture,
     pub mipmap: CachedTexture,
 }
+
+#[derive(Component, ExtractComponent, Clone, Default, Deref, DerefMut)]
+pub struct NormalTarget(pub Handle<Image>);
 
 pub(crate) fn prepare_config(
     views: Query<(Entity, &ViewTarget, &RadianceConfig, Option<&RadianceDebug>)>,
@@ -104,6 +115,7 @@ pub(crate) fn prepare_config(
         config.probe_base = cfg.probe_base;
         config.interval = cfg.interval;
         config.edge_hightlight = cfg.edge_hightlight;
+        config.light_z = cfg.light_z;
         config_buffer.write_buffer(&render_device, &render_queue);
 
         let mut probe_buffer = DynamicUniformBuffer::default();
@@ -176,7 +188,7 @@ pub(crate) fn prepare_textures(
 }
 
 bitflags::bitflags! {
-    #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+    #[derive(Clone, Default, Copy, Debug, PartialEq, Eq, Hash)]
     #[repr(transparent)]
     pub struct GiFlags: u32 {
         const DEFAULT       = 0;
@@ -184,5 +196,6 @@ bitflags::bitflags! {
         const DEBUG_VORONOI = 0x1 << 1;
         const DEBUG_MERGE0  = 0x1 << 3;
         const DEBUG_MERGE1  = 0x1 << 4;
+        const APPLY_NORMALS = 0x1 << 5;
     }
 }

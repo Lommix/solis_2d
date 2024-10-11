@@ -17,6 +17,7 @@ struct GiConfig{
 	cascade_count: u32,
 	flags: u32,
 	edge_highlight: f32,
+	light_z: f32,
 }
 
 fn debug_sdf(cfg: GiConfig) -> f32{

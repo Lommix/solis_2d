@@ -135,6 +135,8 @@ fn create_composite_layout(render_device: &RenderDevice) -> BindGroupLayout {
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 //mipmap tex
                 texture_2d(TextureSampleType::Float { filterable: true }),
+                // normal
+                texture_2d(TextureSampleType::Float { filterable: true }),
                 //linear sample
                 sampler(SamplerBindingType::Filtering),
                 //point sample
@@ -154,6 +156,8 @@ fn create_cascade_layout(render_device: &RenderDevice) -> BindGroupLayout {
                 // sdf
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 // last cascade
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                // normal
                 texture_2d(TextureSampleType::Float { filterable: true }),
                 // radiance sampler
                 sampler(SamplerBindingType::Filtering),

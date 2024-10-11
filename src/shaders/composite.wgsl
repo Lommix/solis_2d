@@ -6,9 +6,10 @@
 @group(0) @binding(2) var merge_tex_0: texture_2d<f32>;
 @group(0) @binding(3) var merge_tex_1: texture_2d<f32>;
 @group(0) @binding(4) var mipmap_tex: texture_2d<f32>;
-@group(0) @binding(5) var radiance_sampler: sampler;
-@group(0) @binding(6) var point_sampler: sampler;
-@group(0) @binding(7) var<uniform> cfg: GiConfig;
+@group(0) @binding(5) var normal_tex: texture_2d<f32>;
+@group(0) @binding(6) var radiance_sampler: sampler;
+@group(0) @binding(7) var point_sampler: sampler;
+@group(0) @binding(8) var<uniform> cfg: GiConfig;
 
 @fragment
 fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
@@ -16,11 +17,10 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	let main_sample = textureSample(main_tex, point_sampler, in.uv);
 	let sdf_sample = textureSample(sdf_tex, point_sampler,in.uv);
-	let merge_sample_1 = textureSample(merge_tex_1, point_sampler, in.uv);
 	let merge_sample_0 = textureSample(merge_tex_0, point_sampler, in.uv);
+	let merge_sample_1 = textureSample(merge_tex_1, point_sampler, in.uv);
 
 	let light = textureSample(mipmap_tex, radiance_sampler, in.uv);
-
 	let edge_intensity = 1./abs(sdf_sample.a) * cfg.edge_highlight;
 	let inside = sign(abs(max(sdf_sample.a,0.)));
 

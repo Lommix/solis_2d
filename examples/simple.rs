@@ -83,6 +83,8 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
             ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
             ui.label("edge highlight");
             ui.add(egui::Slider::new(&mut gi_config.edge_hightlight, (0.)..=10.));
+            ui.label("light hight");
+            ui.add(egui::Slider::new(&mut gi_config.light_z, (-5.)..=5.));
 
             flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_debug, "SDF");
             flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_debug, "VORONOI");
