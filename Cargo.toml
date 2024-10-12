@@ -2,7 +2,7 @@
 name = "solis_2d"
 authors = ["Lorenz Mielke"]
 description = "2D global illumination with optimized radiance cascade"
-keywords = ["illumination", "bevy", "light", "gamedev", "radiance cascade"]
+keywords = ["illumination", "bevy", "light", "graphics", "shader"]
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/Lommix/solis_2d"
