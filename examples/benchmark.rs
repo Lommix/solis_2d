@@ -1,6 +1,6 @@
 use ashscript_solis_2d::prelude::*;
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping, diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin}, gizmos::light, input::mouse::MouseWheel, prelude::*
+    core_pipeline::tonemapping::Tonemapping, diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin}, input::mouse::MouseWheel, prelude::*
 };
 use bevy_egui::*;
 
@@ -68,7 +68,7 @@ fn monitor(diagnostics: Res<DiagnosticsStore>) {
     };
 }
 
-fn setup(mut cmd: Commands, server: Res<AssetServer>, mut egui: EguiContexts, mut light_data: ResMut<LightData>) {
+fn setup(mut cmd: Commands, server: Res<AssetServer>, egui: EguiContexts, mut light_data: ResMut<LightData>) {
     cmd.spawn(RadianceCameraBundle {
         camera_bundle: Camera2dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))

@@ -1,6 +1,6 @@
 use bevy::{
     core_pipeline::tonemapping::Tonemapping, diagnostic::FrameTimeDiagnosticsPlugin,
-    input::mouse::MouseWheel, prelude::*, render::primitives::Aabb,
+    input::mouse::MouseWheel, prelude::*,
 };
 use bevy_egui::*;
 use ashscript_solis_2d::prelude::*;
