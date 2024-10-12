@@ -130,7 +130,6 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<
                 tonemapping: Tonemapping::AcesFitted,
                 ..default()
             },
-            radiance_debug: RadianceDebug::NORMALS,
             ..default()
         },
         MainCamera,

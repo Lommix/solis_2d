@@ -36,10 +36,9 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		let delta = vec2(cos(theta), -sin(theta));
 		let ray = origin + (delta * interval);
 
-		let normal_dot = max(0.,dot(vec3(-delta,in_cfg.light_z),normal));
 		var radiance = march(ray, delta, limit);
-
-		if ( in_cfg.flags >> 5 & 1 ) > 0 {
+		if normal_sample.a > 0. {
+			let normal_dot = max(0.,dot(vec3(-delta,in_cfg.light_z),normal));
 			radiance *= normal_dot;
 		}
 

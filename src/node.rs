@@ -14,7 +14,7 @@ use bevy::{
             RenderPassDescriptor,
         },
         renderer::RenderContext,
-        texture::{FallbackImage, GpuImage},
+        texture::GpuImage,
         view::{ViewTarget, ViewUniformOffset, ViewUniforms},
     },
 };
@@ -50,12 +50,11 @@ impl render_graph::ViewNode for LightNode {
         let radiance_pipline = world.resource::<RadiancePipeline>();
         let post_process = view_target.post_process_write();
         let gpu_imges = world.resource::<RenderAssets<GpuImage>>();
-        let fallback_image = world.resource::<FallbackImage>();
 
-        let normal_target = normal
-            .map(|n| gpu_imges.get(&n.0))
+        let normal_view = normal
+            .map(|n| gpu_imges.get(&n.0).map(|t| &t.texture_view))
             .flatten()
-            .unwrap_or(&fallback_image.d2);
+            .unwrap_or(&radiance_targets.fallback.default_view);
 
         // ------------------------------------
         // load piplines
@@ -159,7 +158,7 @@ impl render_graph::ViewNode for LightNode {
                 &BindGroupEntries::sequential((
                     &radiance_targets.sdf.default_view,
                     last_target,
-                    &normal_target.texture_view,
+                    normal_view,
                     &radiance_pipline.radiance_sampler,
                     gi_config_binding.clone(),
                     probe_binding.clone(),
@@ -228,7 +227,7 @@ impl render_graph::ViewNode for LightNode {
                 &radiance_targets.merge0.default_view,
                 &radiance_targets.merge1.default_view,
                 &radiance_targets.mipmap.default_view,
-                &normal_target.texture_view,
+                normal_view,
                 &radiance_pipline.radiance_sampler,
                 &radiance_pipline.point_sampler,
                 gi_config_binding,

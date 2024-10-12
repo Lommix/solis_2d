@@ -56,10 +56,6 @@ impl Default for RadianceConfig {
 #[derive(Component, ExtractComponent, Clone, Default, Deref, DerefMut)]
 pub struct RadianceDebug(pub GiFlags);
 
-impl RadianceDebug {
-    pub const NORMALS: RadianceDebug = RadianceDebug(GiFlags::APPLY_NORMALS);
-}
-
 // ------------------------------
 // render world
 
@@ -89,6 +85,7 @@ pub struct RadianceTargets {
     pub merge0: CachedTexture,
     pub merge1: CachedTexture,
     pub mipmap: CachedTexture,
+    pub fallback: CachedTexture,
 }
 
 #[derive(Component, ExtractComponent, Clone, Default, Deref, DerefMut)]
@@ -177,12 +174,14 @@ pub(crate) fn prepare_textures(
         };
 
         let mipmap = new_texture(mipmap_size);
+        let fallback = new_texture(Extent3d{width:1,height:1, ..default()});
 
         cmd.entity(entity).insert(RadianceTargets {
             merge0,
             merge1,
             sdf,
             mipmap,
+            fallback,
         });
     });
 }
@@ -196,6 +195,5 @@ bitflags::bitflags! {
         const DEBUG_VORONOI = 0x1 << 1;
         const DEBUG_MERGE0  = 0x1 << 3;
         const DEBUG_MERGE1  = 0x1 << 4;
-        const APPLY_NORMALS = 0x1 << 5;
     }
 }
