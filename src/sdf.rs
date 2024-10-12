@@ -38,7 +38,7 @@ impl FromWorld for SdfPipeline {
         );
 
         let server = world.resource::<AssetServer>();
-        let shader = server.load("embedded://lommix_light/shaders/sdf.wgsl");
+        let shader = server.load("embedded://ashscript_solid_2d/shaders/sdf.wgsl");
         // let shader = server.load("sdf.wgsl");
 
         let id =

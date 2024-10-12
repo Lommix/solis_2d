@@ -1,5 +1,5 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
-#import lommix_light::common::{GiConfig,debug_merge0,debug_merge1, debug_voronoi, debug_sdf}
+#import ashscript_solid_2d::common::{GiConfig,debug_merge0,debug_merge1, debug_voronoi, debug_sdf}
 
 @group(0) @binding(0) var main_tex: texture_2d<f32>;
 @group(0) @binding(1) var sdf_tex: texture_2d<f32>;
