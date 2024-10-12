@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::*;
-use lommix_light::prelude::*;
+use ashscript_solis_2d::prelude::*;
 
 pub fn main() {
     App::new()
@@ -18,7 +18,7 @@ pub fn main() {
                 ..default()
             }),
             bevy_egui::EguiPlugin,
-            LightPlugin::default(),
+            LightPlugin,
             FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Startup, (setup, spawn_info_box))
@@ -27,13 +27,14 @@ pub fn main() {
             (
                 update,
                 scroll,
-                move_camera,
+                control_camera_zoom,
                 move_light,
                 spawn_light,
                 clear,
                 config,
                 diagnostics,
                 monitor,
+
             ),
         )
         .run();
@@ -311,24 +312,24 @@ fn scroll(
     }
 }
 
-fn move_camera(mut camera: Query<&mut Transform, With<Camera>>, inputs: Res<ButtonInput<KeyCode>>) {
-    let Ok(mut transform) = camera.get_single_mut() else {
-        return;
-    };
+fn control_camera_zoom(
+    mut cameras: Query<&mut OrthographicProjection, With<Camera>>,
+    time: Res<Time>,
+    mut scroll_event_reader: EventReader<MouseWheel>,
+) {
+    let mut projection_delta = 0.;
 
-    transform.translation += Vec3::new(
-        (inputs.pressed(KeyCode::ArrowRight) as i32 - inputs.pressed(KeyCode::ArrowLeft) as i32)
-            as f32,
-        (inputs.pressed(KeyCode::ArrowUp) as i32 - inputs.pressed(KeyCode::ArrowDown) as i32)
-            as f32,
-        0.,
-    ) * 2.;
-
-    if inputs.just_pressed(KeyCode::KeyO) {
-        transform.scale += Vec3::splat(0.05);
+    for event in scroll_event_reader.read() {
+        projection_delta += event.y * 3.;
     }
-    if inputs.just_pressed(KeyCode::KeyI) {
-        transform.scale -= Vec3::splat(0.05);
+
+    if projection_delta == 0. {
+        return;
+    }
+
+    for mut camera in cameras.iter_mut() {
+        camera.scale = (camera.scale - projection_delta * time.delta_seconds())
+            .clamp(1., 20.);
     }
 }
 
