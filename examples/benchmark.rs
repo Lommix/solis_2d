@@ -1,11 +1,8 @@
+use ashscript_solis_2d::prelude::*;
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping,
-    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
-    input::mouse::MouseWheel,
-    prelude::*,
+    core_pipeline::tonemapping::Tonemapping, diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin}, gizmos::light, input::mouse::MouseWheel, prelude::*
 };
 use bevy_egui::*;
-use ashscript_solis_2d::prelude::*;
 
 pub fn main() {
     App::new()
@@ -34,6 +31,7 @@ pub fn main() {
                 control_camera_movement,
             ),
         )
+        .insert_resource(LightData::default())
         .run();
 }
 
@@ -46,13 +44,19 @@ pub mod camera {
 }
 
 pub mod map {
-    pub const TILE_DIMENSIONS: f32 = 16.0;
-    pub const MAP_DIMENSIONS: u32 = 1024;
+    pub const TILE_DIMENSIONS: f32 = 64.0;
+    pub const MAP_DIMENSIONS: u32 = 2048; // 8192;
     pub const LIGHT_CHANCE: f32 = 0.1;
 }
 
 #[derive(Component)]
 struct Spin(f32);
+
+#[derive(Resource, Default)]
+struct LightData {
+    pub lights: u32,
+    pub occluders: u32,
+}
 
 fn monitor(diagnostics: Res<DiagnosticsStore>) {
     let Some(_fps) = diagnostics
@@ -64,7 +68,7 @@ fn monitor(diagnostics: Res<DiagnosticsStore>) {
     };
 }
 
-fn setup(mut cmd: Commands, server: Res<AssetServer>) {
+fn setup(mut cmd: Commands, server: Res<AssetServer>, mut egui: EguiContexts, mut light_data: ResMut<LightData>) {
     cmd.spawn(RadianceCameraBundle {
         camera_bundle: Camera2dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
@@ -82,19 +86,53 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>) {
 
     for x in 0..=map::MAP_DIMENSIONS {
         for y in 0..=map::MAP_DIMENSIONS {
-            cmd.spawn((
-                SpriteBundle {
-                    texture: server.load("box.png"),
-                    transform: Transform::from_xyz((x as f32) * map::TILE_DIMENSIONS, (y as f32) * map::TILE_DIMENSIONS, 1.),
-                    ..default()
-                },
-                Emitter {
-                    intensity: 1.,
-                    color: Color::BLACK,
-                    shape: SdfShape::Rect(Vec2::new(50., 25.)),
-                },
-                Spin(rand::random::<f32>()),
-            ));
+            match rand::random::<u32>() % (1. / map::LIGHT_CHANCE) as u32 {
+                0 => {
+                    cmd.spawn((
+                        SpriteBundle {
+                            texture: server.load("box.png"),
+                            transform: Transform::from_xyz(
+                                (x as f32) * map::TILE_DIMENSIONS,
+                                (y as f32) * map::TILE_DIMENSIONS,
+                                1.,
+                            ),
+                            ..default()
+                        },
+                        Emitter {
+                            intensity: 1.,
+                            color: Color::WHITE,
+                            shape: SdfShape::Rect(Vec2::new(50., 25.)),
+                        },
+                        Spin(rand::random::<f32>()),
+                    ));
+
+                    light_data.lights += 1;
+                }
+                1 => {
+                    cmd.spawn((
+                        SpriteBundle {
+                            texture: server.load("box.png"),
+                            transform: Transform::from_xyz(
+                                (x as f32) * map::TILE_DIMENSIONS,
+                                (y as f32) * map::TILE_DIMENSIONS,
+                                1.,
+                            ),
+                            ..default()
+                        },
+                        Emitter {
+                            intensity: 1.,
+                            color: Color::BLACK,
+                            shape: SdfShape::Rect(Vec2::new(50., 25.)),
+                        },
+                        Spin(rand::random::<f32>()),
+                    ));
+
+                    light_data.occluders += 1;
+                }
+                _ => {
+                    // do nothing
+                }
+            }
         }
     }
 }
@@ -138,6 +176,7 @@ fn diagnostics(
     mut egui: EguiContexts,
     diagnostics: Res<DiagnosticsStore>,
     mut timings: Local<Timings>,
+    light_data: Res<LightData>,
 ) {
     let Some(fps_time) = diagnostics.get_measurement(&FrameTimeDiagnosticsPlugin::FPS) else {
         return;
@@ -165,6 +204,8 @@ fn diagnostics(
         .show(egui.ctx_mut(), |ui| {
             ui.label(format!("FPS: {:.3}", timings.avg_fps));
             ui.label(format!("FRAME: {:.2}ms", timings.avg_frame));
+            ui.label(format!("LIGHTS: {}", light_data.lights));
+            ui.label(format!("OCCLUDERS: {}", light_data.occluders));
         });
 }
 
@@ -199,7 +240,7 @@ fn spawn_info_box(mut cmd: Commands) {
         node.style.padding = UiRect::all(Val::Px(10.));
         cmd.spawn(node).with_children(|cmd| {
             cmd.spawn(TextBundle::from_section(
-                "[Arrowkeys]:Move [I]:Zoom-in [O]:Zoom-out [Wheel]:Inc-size [Wheel+shift]:Inc-intensity [R]: clear screen",
+                "[WASD]:Move [Scroll]:Zoom",
                 TextStyle {
                     color: Color::WHITE,
                     font_size: 20.,
@@ -238,7 +279,6 @@ fn control_camera_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
     _time: Res<Time>,
 ) {
-    
     if keyboard.pressed(KeyCode::KeyW) {
         camera_target.y += camera::SPEED;
     }
