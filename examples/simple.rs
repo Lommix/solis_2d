@@ -1,9 +1,9 @@
 use bevy::{
     core_pipeline::tonemapping::Tonemapping, diagnostic::FrameTimeDiagnosticsPlugin,
-    input::mouse::MouseWheel, prelude::*, render::primitives::Aabb,
+    input::mouse::MouseWheel, prelude::*,
 };
 use bevy_egui::*;
-use lommix_light::prelude::*;
+use solis_2d::prelude::*;
 
 pub fn main() {
     App::new()
@@ -16,7 +16,7 @@ pub fn main() {
                 ..default()
             }),
             bevy_egui::EguiPlugin,
-            LightPlugin::default(),
+            SolisPlugin::default(),
             FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Startup, (setup, spawn_info_box))
@@ -82,7 +82,10 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
             ui.label("scale");
             ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
             ui.label("edge highlight");
-            ui.add(egui::Slider::new(&mut gi_config.edge_hightlight, (0.)..=10.));
+            ui.add(egui::Slider::new(
+                &mut gi_config.edge_hightlight,
+                (0.)..=10.,
+            ));
             ui.label("light hight");
             ui.add(egui::Slider::new(&mut gi_config.light_z, (-5.)..=5.));
 

@@ -9,12 +9,12 @@ use bevy::{
             Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
         texture::ImageSampler,
-        view::{RenderLayers, ViewTarget},
+        view::RenderLayers,
     },
     window::WindowResized,
 };
 use bevy_egui::*;
-use lommix_light::prelude::*;
+use solis_2d::prelude::*;
 
 pub fn main() {
     App::new()
@@ -27,7 +27,7 @@ pub fn main() {
                 ..default()
             }),
             bevy_egui::EguiPlugin,
-            LightPlugin::default(),
+            SolisPlugin::default(),
             FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Startup, (setup, spawn_info_box))
@@ -110,7 +110,6 @@ fn sync_size(
         return;
     };
 
-    info!("resizing window");
     normals.iter().for_each(|n| {
         images.insert(&n.0, create_image(win_size));
     });

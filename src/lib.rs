@@ -22,14 +22,16 @@ mod view;
 
 pub mod prelude {
     pub use super::sdf::{Emitter, Occluder, SdfShape};
-    pub use super::view::{GiFlags, RadianceCameraBundle, NormalTarget, RadianceConfig, RadianceDebug};
-    pub use super::LightPlugin;
+    pub use super::view::{
+        GiFlags, NormalTarget, RadianceCameraBundle, RadianceConfig, RadianceDebug,
+    };
+    pub use super::SolisPlugin;
 }
 
 #[derive(Default)]
-pub struct LightPlugin;
+pub struct SolisPlugin;
 
-impl Plugin for LightPlugin {
+impl Plugin for SolisPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             ExtractComponentPlugin::<view::RadianceConfig>::default(),
