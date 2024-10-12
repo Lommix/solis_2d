@@ -1,6 +1,6 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_render::view::View
-#import ashscript_solid_2d::common::{ GiConfig, random, PI, TAU }
+#import ashscript_solis_2d::common::{ GiConfig, random, PI, TAU }
 
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<storage> circle_occluder_buffer: CircleBuffer;

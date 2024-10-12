@@ -1,4 +1,4 @@
-#define_import_path ashscript_solid_2d::common
+#define_import_path ashscript_solis_2d::common
 
 const PI:f32  = 3.14159;
 const TAU:f32 = PI * 2.;

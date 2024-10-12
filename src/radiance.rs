@@ -33,9 +33,9 @@ impl FromWorld for RadiancePipeline {
         let composite_layout = create_composite_layout(&render_device);
         let mipmap_layout = create_mipmap_layout(&render_device);
         let server = world.resource_ref::<AssetServer>();
-        let cascade_shader = server.load("embedded://ashscript_solid_2d/shaders/cascade.wgsl");
-        let composite_shader = server.load("embedded://ashscript_solid_2d/shaders/composite.wgsl");
-        let mipmap_shader = server.load("embedded://ashscript_solid_2d/shaders/mipmap.wgsl");
+        let cascade_shader = server.load("embedded://ashscript_solis_2d/shaders/cascade.wgsl");
+        let composite_shader = server.load("embedded://ashscript_solis_2d/shaders/composite.wgsl");
+        let mipmap_shader = server.load("embedded://ashscript_solis_2d/shaders/mipmap.wgsl");
         let cache = world.resource::<PipelineCache>();
 
         let cascade_id = cache.queue_render_pipeline(RenderPipelineDescriptor {

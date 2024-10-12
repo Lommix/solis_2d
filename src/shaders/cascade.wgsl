@@ -1,7 +1,7 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 #import bevy_render::view::View
-#import ashscript_solid_2d::common::{debug_merge0, Probe, debug_merge1, GiConfig, ComputedSize, random, EPSILON }
-#import ashscript_solid_2d::raymarch::{raymarch_probe}
+#import ashscript_solis_2d::common::{debug_merge0, Probe, debug_merge1, GiConfig, ComputedSize, random, EPSILON }
+#import ashscript_solis_2d::raymarch::{raymarch_probe}
 #import bevy_render::maths::{PI_2, HALF_PI}
 
 @group(0) @binding(0) var sdf_tex: texture_2d<f32>;
