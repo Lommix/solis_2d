@@ -17,21 +17,18 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 
 	let main_sample = textureSample(main_tex, point_sampler, in.uv);
 	let sdf_sample = textureSample(sdf_tex, point_sampler,in.uv);
-	let merge_sample_0 = textureSample(merge_tex_0, point_sampler, in.uv);
-	let merge_sample_1 = textureSample(merge_tex_1, point_sampler, in.uv);
 
 	let light = textureSample(mipmap_tex, radiance_sampler, in.uv);
 	let edge_intensity = 1./abs(sdf_sample.a) * cfg.edge_highlight;
 	let inside = sign(abs(max(sdf_sample.a,0.)));
 
-	out = main_sample + light + light * edge_intensity;
+	out = main_sample + light + light * edge_intensity - cfg.absorb;
+	out *= cfg.modulate;
 
 	out = mix(out, vec4(abs(sdf_sample.a / 20.)), debug_sdf(cfg));
 	out = mix(out, vec4(sdf_sample.rgb, 1.), debug_voronoi(cfg));
-	out = mix(out, merge_sample_0, debug_merge0(cfg));
-	out = mix(out, merge_sample_1, debug_merge1(cfg));
 
-	return out;
+	return max(out,vec4(0.));
 }
 
 

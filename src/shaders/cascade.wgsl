@@ -37,12 +37,12 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		var radiance = march(ray, delta, limit);
 		out += merge(radiance, preavg, extent, probe.xy) * 0.25;
 
-		if in_probe.cascade_index == 0 {
+		if in_probe.cascade_index == 0 && (out.r + out.g + out.b) > 0. {
 			let normal_sample = textureSample(normal_tex, rad_sampler, origin/vec2<f32>( in_cfg.scaled ));
 			let normal = normalize(normal_sample.rgb * 2. - 1.).xyz;
 			let light_dir = normalize(vec3(delta, in_cfg.light_z));
 			let normal_dot = max(0.,dot(light_dir,normal));
-			out *= normal_dot;
+			out *= select(1., normal_dot, normal_sample.a > 0.);
 		}
 	}
 
@@ -60,22 +60,38 @@ fn march(
 	var dst_traveled= 0.;
 	var sample : vec4<f32>;
 
-	for(var i = 0; i < 16; i ++){
-		let ray = ( origin + ( delta * dst_traveled ));
+	var ray = ( origin + ( delta * dst_traveled ));
+	var uv = vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
+    sample = textureSample(sdf_tex, rad_sampler, uv);
+	let is_emitter = sign((sample.r + sample.g + sample.b)) * abs(sign(min(0., sample.a)));
 
-		let uv = vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
+
+	//skip emitter
+	if sample.a < 0. && is_emitter > 0.1  || is_emitter < -0.01 {
+		return vec4(sample.rgb, 0.0);
+	}
+
+	for(var i = 0; i < 20; i ++){
+		ray = ( origin + ( delta * dst_traveled ));
+		uv = vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
 		if uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1. {
 			return vec4(0.,0.,0.,1.);
 		}
 
         sample = textureSample(sdf_tex, rad_sampler, uv);
-		dst_traveled += sample.a;
+		dst_traveled += abs(sample.a);
 
-		if (dst_traveled >= interval){
+		if dst_traveled > interval {
 			break;
 		}
 
-		if sample.a < 0.1 {
+		// lol
+		if sample.a < .0 {
+			dst_traveled += 10.;
+		}
+
+		// fix this
+		if sample.a > 0. && sample.a < 1.0{
 			return vec4(sample.rgb, 0.0);
 		}
 	}

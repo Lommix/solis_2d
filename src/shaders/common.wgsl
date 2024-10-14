@@ -18,6 +18,8 @@ struct GiConfig{
 	flags: u32,
 	edge_highlight: f32,
 	light_z: f32,
+	absorb: vec4<f32>,
+	modulate: vec4<f32>,
 }
 
 fn debug_sdf(cfg: GiConfig) -> f32{

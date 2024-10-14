@@ -37,6 +37,10 @@ pub struct RadianceConfig {
     pub edge_hightlight: f32,
     /// light z pos
     pub light_z: f32,
+    /// absorb color is subtracted from the scene
+    pub absorb: LinearRgba,
+    /// final color multiplier
+    pub modulate: LinearRgba,
 }
 
 impl Default for RadianceConfig {
@@ -47,7 +51,9 @@ impl Default for RadianceConfig {
             cascade_count: 6,
             probe_base: 1,
             edge_hightlight: 1.,
-            light_z: 2.,
+            light_z: 5.,
+            modulate: LinearRgba::WHITE,
+            absorb: LinearRgba::BLACK,
         }
     }
 }
@@ -70,6 +76,8 @@ pub struct GiGpuConfig {
     flags: u32,
     edge_hightlight: f32,
     light_z: f32,
+    absorb: LinearRgba,
+    modulate: LinearRgba,
 }
 
 #[derive(Component, Default)]
@@ -113,6 +121,8 @@ pub(crate) fn prepare_config(
         config.interval = cfg.interval;
         config.edge_hightlight = cfg.edge_hightlight;
         config.light_z = cfg.light_z;
+        config.modulate = cfg.modulate;
+        config.absorb = cfg.absorb;
         config_buffer.write_buffer(&render_device, &render_queue);
 
         let mut probe_buffer = DynamicUniformBuffer::default();

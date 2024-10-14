@@ -148,6 +148,7 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<
 
     for x in -4..=8 {
         for y in -4..=8 {
+            let rand = rand::random::<f32>();
             cmd.spawn((
                 SpriteBundle {
                     texture: server.load("box.png"),
@@ -155,11 +156,21 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<
                     ..default()
                 },
                 Emitter {
-                    intensity: 1.,
+                    intensity: 0.0,
                     color: Color::BLACK,
                     shape: SdfShape::Rect(Vec2::new(50., 25.)),
                 },
-                Spin(rand::random::<f32>()),
+                Spin(rand),
+            ));
+
+            cmd.spawn((
+                SpriteBundle {
+                    texture: server.load("boxn.png"),
+                    transform: Transform::from_xyz((x as f32) * 400., (y as f32) * 400., 1.),
+                    ..default()
+                },
+                RenderLayers::layer(3),
+                Spin(rand),
             ));
         }
     }
@@ -167,19 +178,19 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<
     let map_size = 8;
     for x in -map_size..map_size {
         for y in -map_size..map_size {
-            let ox = x as f32 * 256.;
-            let oy = y as f32 * 256.;
+            let ox = x as f32 * 2000.;
+            let oy = y as f32 * 2000.;
 
             cmd.spawn(SpriteBundle {
                 sprite: Sprite { ..default() },
-                texture: server.load("tile/tile_1.png"),
+                texture: server.load("brick.png"),
                 transform: Transform::from_translation(Vec3::new(ox, oy, 0.)),
                 ..default()
             });
             cmd.spawn((
                 SpriteBundle {
                     sprite: Sprite { ..default() },
-                    texture: server.load("tile/tile_n.png"),
+                    texture: server.load("brickn.png"),
                     transform: Transform::from_translation(Vec3::new(ox, oy, 0.)),
                     ..default()
                 },
@@ -222,13 +233,36 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
             ui.label("edge highlight");
             ui.add(egui::Slider::new(&mut cfg.edge_hightlight, (0.0)..=100.));
             ui.label("light hight");
-            ui.add(egui::Slider::new(&mut cfg.light_z, (-5.)..=5.));
+            ui.add(egui::Slider::new(&mut cfg.light_z, (-5.)..=50.));
+
+            ui.label("modulate");
+            let mut rgb = to_egui_color(cfg.modulate);
+            egui::color_picker::color_edit_button_rgba(
+                ui,
+                &mut rgb,
+                egui::color_picker::Alpha::BlendOrAdditive,
+            );
+            cfg.modulate = to_bevy_color(rgb);
+
+            ui.label("absorb");
+            rgb = to_egui_color(cfg.absorb);
+            egui::color_picker::color_edit_button_rgba(
+                ui,
+                &mut rgb,
+                egui::color_picker::Alpha::BlendOrAdditive,
+            );
+            cfg.absorb = to_bevy_color(rgb);
 
             flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut debug, "SDF");
             flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut debug, "VORONOI");
-            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut debug, "MERGE0");
-            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut debug, "MERGE1");
         });
+}
+
+fn to_bevy_color(color: egui::Rgba) -> LinearRgba {
+    LinearRgba::from_f32_array(color.to_array())
+}
+fn to_egui_color(color: LinearRgba) -> egui::Rgba {
+    egui::Rgba::from_rgba_unmultiplied(color.red, color.green, color.blue, color.alpha)
 }
 
 #[derive(Default)]
@@ -395,7 +429,7 @@ fn scroll(
     let dir = event.y.signum();
     match inputs.pressed(KeyCode::ShiftLeft) {
         true => {
-            emitter.intensity = (emitter.intensity + dir * 0.1).max(0.);
+            emitter.intensity = emitter.intensity + dir.signum() * 0.2;
         }
         false => {
             *multi = (*multi + dir).max(0.);
