@@ -26,8 +26,6 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 	let angular			= sqr_angular * sqr_angular * 4.0;
 	let index			= (probe.z + (probe.w * sqr_angular)) * 4.0;
 
-	let normal_sample = textureSample(normal_tex, rad_sampler, origin/vec2<f32>( in_cfg.scaled ));
-	let normal = normalize(normal_sample.rgb * 2. - 1.);
 
 	var out : vec4<f32>;
 	for(var i = 0; i < 4; i++){
@@ -37,12 +35,15 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		let ray = origin + (delta * interval);
 
 		var radiance = march(ray, delta, limit);
-		if normal_sample.a > 0. {
-			let normal_dot = max(0.,dot(vec3(-delta,in_cfg.light_z),normal));
-			radiance *= normal_dot;
-		}
-
 		out += merge(radiance, preavg, extent, probe.xy) * 0.25;
+
+		if in_probe.cascade_index == 0 {
+			let normal_sample = textureSample(normal_tex, rad_sampler, origin/vec2<f32>( in_cfg.scaled ));
+			let normal = normalize(normal_sample.rgb * 2. - 1.).xyz;
+			let light_dir = normalize(vec3(delta, in_cfg.light_z));
+			let normal_dot = max(0.,dot(light_dir,normal));
+			out *= normal_dot;
+		}
 	}
 
 

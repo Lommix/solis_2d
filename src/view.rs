@@ -174,7 +174,11 @@ pub(crate) fn prepare_textures(
         };
 
         let mipmap = new_texture(mipmap_size);
-        let fallback = new_texture(Extent3d{width:1,height:1, ..default()});
+        let fallback = new_texture(Extent3d {
+            width: 1,
+            height: 1,
+            ..default()
+        });
 
         cmd.entity(entity).insert(RadianceTargets {
             merge0,

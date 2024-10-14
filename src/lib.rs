@@ -21,7 +21,7 @@ mod sdf;
 mod view;
 
 pub mod prelude {
-    pub use super::sdf::{Emitter, Occluder, SdfShape};
+    pub use super::sdf::{Emitter, SdfShape};
     pub use super::view::{
         GiFlags, NormalTarget, RadianceCameraBundle, RadianceConfig, RadianceDebug,
     };

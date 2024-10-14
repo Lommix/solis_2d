@@ -77,11 +77,6 @@ pub enum SdfShape {
 }
 
 #[derive(Component, Clone)]
-pub struct Occluder {
-    pub shape: SdfShape,
-}
-
-#[derive(Component, Clone)]
 pub struct Emitter {
     pub intensity: f32,
     pub color: Color,
