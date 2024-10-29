@@ -69,8 +69,18 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		dist = min(dist, world_dist);
 	}
 
+	let zoom = get_zoom(view);
 	let scale = f32(in_cfg.native.x)/f32(in_cfg.scaled.x);
-	return vec4(emit, dist / scale);
+	return vec4(emit, dist / scale) * zoom;
+}
+
+//this sucks, precalc
+fn get_zoom(view: View) -> f32 {
+	let scale_x = length(view.view_from_world[0].xyz);
+    let scale_y = length(view.view_from_world[1].xyz);
+    let scale_z = length(view.view_from_world[2].xyz);
+
+    return (scale_x + scale_y + scale_z) / 3.; // or simply return scale_x/scale_y if needed
 }
 
 fn world_circle(

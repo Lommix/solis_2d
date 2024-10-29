@@ -118,20 +118,18 @@ fn sync_size(
 fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<Image>>) {
     let image_handle = images.add(create_image(Vec2::new(1024., 1024.)));
     cmd.spawn((
-        RadianceCameraBundle {
-            camera_bundle: Camera2dBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
-                    .looking_at(Vec3::default(), Vec3::Y),
-                camera: Camera {
-                    clear_color: Color::BLACK.into(),
-                    hdr: true,
-                    ..default()
-                },
-                tonemapping: Tonemapping::AcesFitted,
+        Camera2dBundle {
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
+                .looking_at(Vec3::default(), Vec3::Y),
+            camera: Camera {
+                clear_color: Color::BLACK.into(),
+                hdr: true,
                 ..default()
             },
+            tonemapping: Tonemapping::AcesFitted,
             ..default()
         },
+        RadianceConfig::default(),
         MainCamera,
         NormalTarget(image_handle.clone()),
     ));
@@ -178,8 +176,8 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<
     let map_size = 8;
     for x in -map_size..map_size {
         for y in -map_size..map_size {
-            let ox = x as f32 * 2000.;
-            let oy = y as f32 * 2000.;
+            let ox = x as f32 * 2048.;
+            let oy = y as f32 * 2048.;
 
             cmd.spawn(SpriteBundle {
                 sprite: Sprite { ..default() },
@@ -214,8 +212,8 @@ fn setup(mut cmd: Commands, server: Res<AssetServer>, mut images: ResMut<Assets<
     ));
 }
 
-fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut egui: EguiContexts) {
-    let Ok((mut cfg, mut debug)) = gi_config.get_single_mut() else {
+fn config(mut gi_config: Query<&mut RadianceConfig>, mut egui: EguiContexts) {
+    let Ok(mut cfg) = gi_config.get_single_mut() else {
         return;
     };
 
@@ -253,8 +251,14 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
             );
             cfg.absorb = to_bevy_color(rgb);
 
-            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut debug, "SDF");
-            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut debug, "VORONOI");
+            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut cfg.flags, "SDF");
+            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut cfg.flags, "VORONOI");
+            flag_checkbox(
+                GiFlags::OCCLUDER_LIGHT,
+                ui,
+                &mut cfg.flags,
+                "OCCLUDER_NORMAL",
+            );
         });
 }
 

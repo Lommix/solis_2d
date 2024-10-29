@@ -13,16 +13,8 @@ use bevy::{
     },
 };
 
-/// screen space radiance cascade
-/// 2D camera bundle
-#[derive(Bundle, Default)]
-pub struct RadianceCameraBundle {
-    pub camera_bundle: Camera2dBundle,
-    pub radiance_cfg: RadianceConfig,
-    pub radiance_debug: RadianceDebug,
-}
-
 /// radiance cascade configuration
+/// add this to a Camera to add screen space light
 #[derive(Component, ExtractComponent, Clone)]
 pub struct RadianceConfig {
     /// ray base range
@@ -41,6 +33,8 @@ pub struct RadianceConfig {
     pub absorb: LinearRgba,
     /// final color multiplier
     pub modulate: LinearRgba,
+    /// config flags `GiFlags`
+    pub flags: GiFlags,
 }
 
 impl Default for RadianceConfig {
@@ -54,13 +48,10 @@ impl Default for RadianceConfig {
             light_z: 5.,
             modulate: LinearRgba::WHITE,
             absorb: LinearRgba::BLACK,
+            flags: GiFlags::DEFAULT,
         }
     }
 }
-
-/// debug component, enable debug flags
-#[derive(Component, ExtractComponent, Clone, Default, Deref, DerefMut)]
-pub struct RadianceDebug(pub GiFlags);
 
 // ------------------------------
 // render world
@@ -100,12 +91,12 @@ pub struct RadianceTargets {
 pub struct NormalTarget(pub Handle<Image>);
 
 pub(crate) fn prepare_config(
-    views: Query<(Entity, &ViewTarget, &RadianceConfig, Option<&RadianceDebug>)>,
+    views: Query<(Entity, &ViewTarget, &RadianceConfig)>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     mut cmd: Commands,
 ) {
-    views.iter().for_each(|(entity, view_target, cfg, flags)| {
+    views.iter().for_each(|(entity, view_target, cfg)| {
         let target_size = view_target.main_texture().size();
         let native = Vec2::new(target_size.width as f32, target_size.height as f32);
         let scaled = native / cfg.scale_factor;
@@ -116,7 +107,7 @@ pub(crate) fn prepare_config(
         config.scaled = scaled.as_uvec2();
         config.cascade_count = cfg.cascade_count;
         config.scale = cfg.scale_factor;
-        config.flags = flags.map(|f| f.0.bits()).unwrap_or_default();
+        config.flags = cfg.flags.bits();
         config.probe_base = cfg.probe_base;
         config.interval = cfg.interval;
         config.edge_hightlight = cfg.edge_hightlight;
@@ -204,10 +195,11 @@ bitflags::bitflags! {
     #[derive(Clone, Default, Copy, Debug, PartialEq, Eq, Hash)]
     #[repr(transparent)]
     pub struct GiFlags: u32 {
-        const DEFAULT       = 0;
-        const DEBUG_SDF     = 0x1 << 0;
-        const DEBUG_VORONOI = 0x1 << 1;
-        const DEBUG_MERGE0  = 0x1 << 3;
-        const DEBUG_MERGE1  = 0x1 << 4;
+        const DEFAULT           = 0;
+        const DEBUG_SDF         = 0x1 << 0;
+        const DEBUG_VORONOI     = 0x1 << 1;
+        const DEBUG_MERGE0      = 0x1 << 3;
+        const DEBUG_MERGE1      = 0x1 << 4;
+        const OCCLUDER_LIGHT    = 0x1 << 5;
     }
 }

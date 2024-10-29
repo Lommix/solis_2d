@@ -23,7 +23,7 @@ mod view;
 pub mod prelude {
     pub use super::sdf::{Emitter, SdfShape};
     pub use super::view::{
-        GiFlags, NormalTarget, RadianceCameraBundle, RadianceConfig, RadianceDebug,
+        GiFlags, NormalTarget, RadianceConfig,
     };
     pub use super::SolisPlugin;
 }
@@ -35,7 +35,6 @@ impl Plugin for SolisPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             ExtractComponentPlugin::<view::RadianceConfig>::default(),
-            ExtractComponentPlugin::<view::RadianceDebug>::default(),
             ExtractComponentPlugin::<view::NormalTarget>::default(),
         ));
 

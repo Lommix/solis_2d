@@ -30,9 +30,12 @@ pub fn main() {
 #[derive(Component)]
 struct FollowMouse;
 
+#[derive(Component)]
+struct Keep;
+
 fn setup(mut cmd: Commands) {
-    cmd.spawn(RadianceCameraBundle {
-        camera_bundle: Camera2dBundle {
+    cmd.spawn((
+        Camera2dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 5.0))
                 .looking_at(Vec3::default(), Vec3::Y),
             camera: Camera {
@@ -43,8 +46,8 @@ fn setup(mut cmd: Commands) {
             tonemapping: Tonemapping::AcesFitted,
             ..default()
         },
-        ..default()
-    });
+        RadianceConfig::default(),
+    ));
 
     cmd.spawn((
         SpatialBundle::default(),
@@ -53,6 +56,7 @@ fn setup(mut cmd: Commands) {
             color: Color::BLACK,
             shape: SdfShape::Rect(Vec2::new(50., 25.)),
         },
+        Keep,
     ));
     cmd.spawn((
         Emitter {
@@ -65,8 +69,8 @@ fn setup(mut cmd: Commands) {
     ));
 }
 
-fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut egui: EguiContexts) {
-    let Ok((mut gi_config, mut gi_debug)) = gi_config.get_single_mut() else {
+fn config(mut gi_config: Query<&mut RadianceConfig>, mut egui: EguiContexts) {
+    let Ok(mut cfg) = gi_config.get_single_mut() else {
         return;
     };
 
@@ -74,26 +78,53 @@ fn config(mut gi_config: Query<(&mut RadianceConfig, &mut RadianceDebug)>, mut e
         .anchor(egui::Align2::RIGHT_TOP, [0., 0.])
         .show(egui.ctx_mut(), |ui| {
             ui.label("probe stride");
-            ui.add(egui::Slider::new(&mut gi_config.probe_base, (1)..=16));
+            ui.add(egui::Slider::new(&mut cfg.probe_base, (1)..=16));
             ui.label("cascade count");
-            ui.add(egui::Slider::new(&mut gi_config.cascade_count, (2)..=8));
+            ui.add(egui::Slider::new(&mut cfg.cascade_count, (2)..=8));
             ui.label("interval");
-            ui.add(egui::Slider::new(&mut gi_config.interval, (0.1)..=1000.));
+            ui.add(egui::Slider::new(&mut cfg.interval, (0.1)..=10.));
             ui.label("scale");
-            ui.add(egui::Slider::new(&mut gi_config.scale_factor, (0.25)..=10.));
+            ui.add(egui::Slider::new(&mut cfg.scale_factor, (0.25)..=10.));
             ui.label("edge highlight");
-            ui.add(egui::Slider::new(
-                &mut gi_config.edge_hightlight,
-                (0.)..=10.,
-            ));
+            ui.add(egui::Slider::new(&mut cfg.edge_hightlight, (0.0)..=100.));
             ui.label("light hight");
-            ui.add(egui::Slider::new(&mut gi_config.light_z, (-5.)..=5.));
+            ui.add(egui::Slider::new(&mut cfg.light_z, (-5.)..=50.));
 
-            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut gi_debug, "SDF");
-            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut gi_debug, "VORONOI");
-            flag_checkbox(GiFlags::DEBUG_MERGE1, ui, &mut gi_debug, "MERGE0");
-            flag_checkbox(GiFlags::DEBUG_MERGE0, ui, &mut gi_debug, "MERGE1");
+            ui.label("modulate");
+            let mut rgb = to_egui_color(cfg.modulate);
+            egui::color_picker::color_edit_button_rgba(
+                ui,
+                &mut rgb,
+                egui::color_picker::Alpha::BlendOrAdditive,
+            );
+            cfg.modulate = to_bevy_color(rgb);
+
+            ui.label("absorb");
+            rgb = to_egui_color(cfg.absorb);
+            egui::color_picker::color_edit_button_rgba(
+                ui,
+                &mut rgb,
+                egui::color_picker::Alpha::BlendOrAdditive,
+            );
+            cfg.absorb = to_bevy_color(rgb);
+
+            flag_checkbox(GiFlags::DEBUG_SDF, ui, &mut cfg.flags, "SDF");
+            flag_checkbox(GiFlags::DEBUG_VORONOI, ui, &mut cfg.flags, "VORONOI");
+            flag_checkbox(
+                GiFlags::OCCLUDER_LIGHT,
+                ui,
+                &mut cfg.flags,
+                "OCCLUDER_NORMAL",
+            );
         });
+}
+
+
+fn to_bevy_color(color: egui::Rgba) -> LinearRgba {
+    LinearRgba::from_f32_array(color.to_array())
+}
+fn to_egui_color(color: LinearRgba) -> egui::Rgba {
+    egui::Rgba::from_rgba_unmultiplied(color.red, color.green, color.blue, color.alpha)
 }
 
 fn flag_checkbox(bit: GiFlags, ui: &mut egui::Ui, flags: &mut GiFlags, label: &str) {
@@ -160,7 +191,7 @@ fn spawn_light(
 
 fn clear(
     mut cmd: Commands,
-    emitters: Query<Entity, (Without<FollowMouse>, With<Emitter>)>,
+    emitters: Query<Entity, (Without<FollowMouse>, With<Emitter>, Without<Keep>)>,
     inputs: Res<ButtonInput<KeyCode>>,
 ) {
     if inputs.just_pressed(KeyCode::KeyR) {

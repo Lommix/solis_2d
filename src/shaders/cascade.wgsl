@@ -51,27 +51,56 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 }
 
 
-fn march(
+fn march_to_positive(
 	origin: vec2<f32>,
+	delta: vec2<f32>,
+) -> vec2<f32>{
+
+	var dst_traveled	= 0.;
+
+	for(var i = 0; i < 16; i ++){
+		var ray		= ( origin + ( delta * dst_traveled ));
+		var uv		= vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
+		var sample	= textureSample(sdf_tex, rad_sampler, uv);
+
+		if sample.a > 1.0 {
+			return uv;
+		}
+
+		dst_traveled += abs(sample.a) - 6.;
+
+	}
+
+	return vec2(0.);
+}
+
+fn march(
+	o: vec2<f32>,
 	delta: vec2<f32>,
 	interval: f32,
 ) -> vec4<f32> {
 
-	var dst_traveled= 0.;
-	var sample : vec4<f32>;
+	var origin = o;
+	var dst_traveled	= 0.;
+	var ray				= ( origin + ( delta * dst_traveled ));
+	var uv				= vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
+    var sample			= textureSample(sdf_tex, rad_sampler, uv);
 
-	var ray = ( origin + ( delta * dst_traveled ));
-	var uv = vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
-    sample = textureSample(sdf_tex, rad_sampler, uv);
 	let is_emitter = sign((sample.r + sample.g + sample.b)) * abs(sign(min(0., sample.a)));
 
-
-	//skip emitter
-	if sample.a < 0. && is_emitter > 0.1  || is_emitter < -0.01 {
+	if is_emitter > 0. {
 		return vec4(sample.rgb, 0.0);
 	}
 
-	for(var i = 0; i < 20; i ++){
+
+	if sample.a < .0 && ( in_cfg.flags >> 5 & 0x1 ) == 1 {
+		origin = march_to_positive(origin,delta) * vec2<f32>(textureDimensions(sdf_tex));
+	} else {
+		dst_traveled += abs(sample.a);
+	}
+
+	//skip emitter
+	for(var i = 0; i < 16; i ++){
 		ray = ( origin + ( delta * dst_traveled ));
 		uv = vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
 		if uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1. {
@@ -85,13 +114,7 @@ fn march(
 			break;
 		}
 
-		// lol
-		if sample.a < .0 {
-			dst_traveled += 10.;
-		}
-
-		// fix this
-		if sample.a > 0. && sample.a < 1.0{
+		if sample.a < 0.3 {
 			return vec4(sample.rgb, 0.0);
 		}
 	}
