@@ -46,7 +46,6 @@ fn fragment(in : FullscreenVertexOutput) -> @location(0) vec4<f32>{
 		}
 	}
 
-
 	return out;
 }
 
@@ -58,17 +57,16 @@ fn march_to_positive(
 
 	var dst_traveled	= 0.;
 
-	for(var i = 0; i < 16; i ++){
+	for(var i = 0; i < 8; i ++){
 		var ray		= ( origin + ( delta * dst_traveled ));
 		var uv		= vec2<f32>(ray) / vec2<f32>(textureDimensions(sdf_tex));
 		var sample	= textureSample(sdf_tex, rad_sampler, uv);
 
-		if sample.a > 1.0 {
+		if sample.a > 0. {
 			return uv;
 		}
 
-		dst_traveled += abs(sample.a) - 6.;
-
+		dst_traveled += round(sample.a) + 1.;
 	}
 
 	return vec2(0.);
@@ -92,13 +90,15 @@ fn march(
 		return vec4(sample.rgb, 0.0);
 	}
 
-
+	// fix this monster
 	if sample.a < .0 && ( in_cfg.flags >> 5 & 0x1 ) == 1 {
 		origin = march_to_positive(origin,delta) * vec2<f32>(textureDimensions(sdf_tex));
 	} else {
-		dst_traveled += abs(sample.a);
+		if sample.a < 0. {
+			return vec4(sample.rgb, 0.0);
+		}
 	}
-
+	dst_traveled += abs(sample.a);
 	//skip emitter
 	for(var i = 0; i < 16; i ++){
 		ray = ( origin + ( delta * dst_traveled ));
@@ -114,7 +114,7 @@ fn march(
 			break;
 		}
 
-		if sample.a < 0.3 {
+		if sample.a < 1. {
 			return vec4(sample.rgb, 0.0);
 		}
 	}

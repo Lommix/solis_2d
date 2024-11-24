@@ -1,7 +1,7 @@
 use crate::{
     radiance::RadiancePipeline,
     sdf::{SdfBuffers, SdfPipeline},
-    view::{NormalTarget, RadianceBuffers, RadianceConfig, RadianceTargets},
+    view::{DisableLight, NormalTarget, RadianceBuffers, RadianceConfig, RadianceTargets},
 };
 use bevy::{
     ecs::{query::QueryItem, system::lifetimeless::Read},
@@ -31,6 +31,7 @@ impl render_graph::ViewNode for LightNode {
         Read<RadianceBuffers>,
         Read<RadianceTargets>,
         Read<RadianceConfig>,
+        Has<DisableLight>,
         Option<Read<NormalTarget>>,
     );
 
@@ -38,12 +39,18 @@ impl render_graph::ViewNode for LightNode {
         &self,
         _graph: &mut RenderGraphContext,
         render_context: &mut RenderContext<'w>,
-        (view_offset, view_target, radiance_buffers, radiance_targets, config, normal): QueryItem<
+        (view_offset, view_target, radiance_buffers, radiance_targets, config, disabled, normal): QueryItem<
             'w,
             Self::ViewQuery,
         >,
         world: &'w World,
     ) -> Result<(), NodeRunError> {
+
+
+        if disabled {
+            return Ok(());
+        }
+
         let sdf_pipeline = world.resource::<SdfPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
         let sdf_buffers = world.resource::<SdfBuffers>();

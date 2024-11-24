@@ -70,7 +70,7 @@ impl FromWorld for SdfPipeline {
 
 // ---------------------------
 // extract
-#[derive(Component, Clone)]
+#[derive(Clone)]
 pub enum SdfShape {
     Circle(f32),
     Rect(Vec2),
@@ -82,6 +82,9 @@ pub struct Emitter {
     pub color: Color,
     pub shape: SdfShape,
 }
+
+#[derive(Component, Default, Clone)]
+pub struct DisableEmitter;
 
 #[derive(Component, Debug, ShaderType, Clone)]
 pub struct GpuRect {
@@ -122,12 +125,15 @@ pub struct SdfBuffers {
 
 pub fn extract_emitter(
     occluders: Extract<
-        Query<(
-            &Emitter,
-            &GlobalTransform,
-            &InheritedVisibility,
-            &ViewVisibility,
-        )>,
+        Query<
+            (
+                &Emitter,
+                &GlobalTransform,
+                &InheritedVisibility,
+                &ViewVisibility,
+            ),
+            Without<DisableEmitter>,
+        >,
     >,
     mut buffers: ResMut<SdfBuffers>,
 ) {

@@ -1,3 +1,7 @@
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![allow(rustdoc::redundant_explicit_links)]
+#![doc = include_str!("../README.md")]
+
 use bevy::{
     asset::{embedded_asset, load_internal_asset},
     core_pipeline::core_2d::graph::{Core2d, Node2d},
@@ -21,10 +25,8 @@ mod sdf;
 mod view;
 
 pub mod prelude {
-    pub use super::sdf::{Emitter, SdfShape};
-    pub use super::view::{
-        GiFlags, NormalTarget, RadianceConfig,
-    };
+    pub use super::sdf::{DisableEmitter, Emitter, SdfShape};
+    pub use super::view::{DisableLight, GiFlags, NormalTarget, RadianceConfig};
     pub use super::SolisPlugin;
 }
 
@@ -36,6 +38,7 @@ impl Plugin for SolisPlugin {
         app.add_plugins((
             ExtractComponentPlugin::<view::RadianceConfig>::default(),
             ExtractComponentPlugin::<view::NormalTarget>::default(),
+            ExtractComponentPlugin::<view::DisableLight>::default(),
         ));
 
         // adds some hot reloading for dev

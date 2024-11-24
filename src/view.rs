@@ -37,6 +37,9 @@ pub struct RadianceConfig {
     pub flags: GiFlags,
 }
 
+#[derive(Component, Default, Clone, ExtractComponent)]
+pub struct DisableLight;
+
 impl Default for RadianceConfig {
     fn default() -> Self {
         Self {

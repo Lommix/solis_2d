@@ -7,6 +7,8 @@ version = "0.1.1"
 edition = "2021"
 repository = "https://github.com/Lommix/solis_2d"
 license = "MIT OR Apache-2.0"
+categories = ["Game development", "Graphics", "Rendering"]
+readme = "README.md"
 
 [profile.dev]
 opt-level = 1
@@ -21,9 +23,6 @@ bevy = { version = "0.14", default-features = false, features = [
 bitflags = "2.5.0"
 bytemuck = "1.15.0"
 rand = "0.8.5"
-
-[build]
-rustflags = ["--cfg=web_sys_unstable_apis"]
 
 [dev-dependencies]
 bevy_egui = "0.28"
